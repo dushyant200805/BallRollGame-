@@ -1,0 +1,179 @@
+/* Ball Path — Audio manager: every sound is synthesized live with the Web Audio API
+ * (no audio files), including a soft generative background music loop.
+ */
+(function (BP) {
+  'use strict';
+
+  let ctx = null, master, sfxBus, musicBus, noiseBuffer;
+  let sfxOn = true, musicOn = true;
+  let rollNodes = null;
+  const music = { timer: null, nextTime: 0, step: 0 };
+
+  function ensure() {
+    if (ctx) {
+      if (ctx.state === 'suspended') ctx.resume();
+      return true;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? 1 : 0; sfxBus.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? 0.55 : 0; musicBus.connect(master);
+    noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return true;
+  }
+
+  function tone({ freq, freqEnd, type = 'sine', at = 0, dur = 0.15, vol = 0.3, attack = 0.005, bus }) {
+    const t = ctx.currentTime + at;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(bus || sfxBus);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+
+  function noise({ at = 0, dur = 0.12, vol = 0.2, filter = 'bandpass', freq = 1200, freqEnd, q = 1.2 }) {
+    const t = ctx.currentTime + at;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    const f = ctx.createBiquadFilter();
+    f.type = filter; f.Q.value = q;
+    f.frequency.setValueAtTime(freq, t);
+    if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(sfxBus);
+    src.start(t, Math.random()); src.stop(t + dur + 0.05);
+  }
+
+  const SFX = {
+    click() { tone({ freq: 720, freqEnd: 980, type: 'triangle', dur: 0.07, vol: 0.18 }); },
+    slide() {
+      noise({ dur: 0.11, vol: 0.22, freq: 900, freqEnd: 500, q: 0.9 });
+      tone({ freq: 210, freqEnd: 150, type: 'triangle', at: 0.07, dur: 0.09, vol: 0.32 }); // wooden "tock"
+    },
+    bump() { tone({ freq: 140, freqEnd: 100, type: 'sine', dur: 0.1, vol: 0.25 }); },
+    hint() {
+      tone({ freq: 880, type: 'sine', dur: 0.18, vol: 0.18 });
+      tone({ freq: 1318.5, type: 'sine', at: 0.09, dur: 0.25, vol: 0.16 });
+    },
+    connect() {
+      tone({ freq: 523.25, type: 'triangle', dur: 0.12, vol: 0.16 });
+      tone({ freq: 783.99, type: 'triangle', at: 0.08, dur: 0.18, vol: 0.16 });
+    },
+    win() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        tone({ freq: f, type: 'triangle', at: i * 0.1, dur: 0.3, vol: 0.22 });
+        tone({ freq: f * 2, type: 'sine', at: i * 0.1 + 0.02, dur: 0.2, vol: 0.06 });
+      });
+      tone({ freq: 1567.98, type: 'sine', at: 0.45, dur: 0.6, vol: 0.12 });
+    },
+    star(i) { tone({ freq: [987.77, 1174.66, 1567.98][i] || 1567.98, type: 'sine', dur: 0.35, vol: 0.18 }); },
+    fail() {
+      tone({ freq: 392, freqEnd: 330, type: 'sawtooth', dur: 0.22, vol: 0.08 });
+      tone({ freq: 311, freqEnd: 220, type: 'sawtooth', at: 0.18, dur: 0.35, vol: 0.08 });
+    },
+    drop() { tone({ freq: 500, freqEnd: 80, type: 'sine', dur: 0.45, vol: 0.2 }); },
+  };
+
+  // Rolling: looped low-passed noise with a gentle wobble.
+  function startRoll() {
+    if (!ensure() || rollNodes) return;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 3;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 9;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.05;
+    lfo.connect(lfoGain); lfoGain.connect(g.gain);
+    src.connect(lp); lp.connect(g); g.connect(sfxBus);
+    g.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.1);
+    src.start(); lfo.start();
+    rollNodes = { src, g, lfo };
+  }
+
+  function stopRoll() {
+    if (!rollNodes) return;
+    const { src, g, lfo } = rollNodes;
+    const t = ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    src.stop(t + 0.15); lfo.stop(t + 0.15);
+    rollNodes = null;
+  }
+
+  // Background music: I–vi–IV–V pads with a pentatonic pluck, scheduled ahead of time.
+  const CHORDS = [[261.63, 329.63, 392.0], [220.0, 261.63, 329.63], [174.61, 220.0, 261.63], [196.0, 246.94, 293.66]];
+  const PENTA = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+  const BEAT = 0.42;
+
+  function scheduleMusic() {
+    while (music.nextTime < ctx.currentTime + 0.3) {
+      const step = music.step;
+      const t = music.nextTime - ctx.currentTime;
+      const chord = CHORDS[Math.floor(step / 8) % CHORDS.length];
+      if (step % 8 === 0) {
+        chord.forEach((f) => tone({ freq: f, type: 'sine', at: t, dur: BEAT * 8, vol: 0.05, attack: 0.6, bus: musicBus }));
+        tone({ freq: chord[0] / 2, type: 'triangle', at: t, dur: BEAT * 4, vol: 0.07, attack: 0.05, bus: musicBus });
+      }
+      if (step % 8 === 4) tone({ freq: chord[0] / 2, type: 'triangle', at: t, dur: BEAT * 4, vol: 0.06, attack: 0.05, bus: musicBus });
+      // deterministic-but-varied melody
+      const r = (Math.sin(step * 12.9898) * 43758.5453) % 1;
+      if (step % 2 === 0 && Math.abs(r) > 0.35) {
+        const note = PENTA[Math.floor(Math.abs(r) * 997) % PENTA.length];
+        tone({ freq: note, type: 'triangle', at: t, dur: 0.5, vol: 0.045, bus: musicBus });
+      }
+      music.step++;
+      music.nextTime += BEAT;
+    }
+  }
+
+  function startMusic() {
+    if (!musicOn || music.timer || !ensure()) return;
+    music.nextTime = ctx.currentTime + 0.1;
+    music.timer = setInterval(scheduleMusic, 80);
+  }
+
+  function stopMusic() {
+    clearInterval(music.timer);
+    music.timer = null;
+  }
+
+  const AudioManager = {
+    /** Must be called from a user gesture at least once (browser autoplay policy). */
+    unlock() {
+      if (!ensure()) return;
+      if (musicOn) startMusic();
+    },
+    play(name, arg) {
+      if (!sfxOn || !ensure() || !SFX[name]) return;
+      SFX[name](arg);
+    },
+    startRoll() { if (sfxOn) startRoll(); },
+    stopRoll,
+    setSound(on) {
+      sfxOn = on;
+      if (ctx) sfxBus.gain.value = on ? 1 : 0;
+      if (!on) stopRoll();
+    },
+    setMusic(on) {
+      musicOn = on;
+      if (ctx) musicBus.gain.value = on ? 0.55 : 0;
+      if (on && ctx) startMusic(); else stopMusic();
+    },
+    suspend() { if (ctx && ctx.state === 'running') ctx.suspend(); },
+    resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); },
+  };
+
+  BP.AudioManager = AudioManager;
+})(window.BP = window.BP || {});

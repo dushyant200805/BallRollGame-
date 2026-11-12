@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#14263a">
+  <meta name="description" content="Ball Path — slide the wooden pipe tiles, connect the track and roll the ball home.">
+  <title>Ball Path</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='14' fill='%23e3a35c'/%3E%3Cpath d='M32 4v14a14 14 0 0 0 14 14h14' fill='none' stroke='%23c9d2da' stroke-width='12'/%3E%3Ccircle cx='24' cy='42' r='10' fill='%23f23a55'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7H4V2M4.5 7A8.5 8.5 0 1 1 4 13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-restart" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.8" fill="currentColor"/><circle cx="17.5" cy="16" r="2.8" fill="currentColor"/></symbol>
+      <symbol id="i-music-off" viewBox="0 0 24 24"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" opacity=".45"/><circle cx="6.5" cy="18" r="2.8" fill="currentColor" opacity=".45"/><circle cx="17.5" cy="16" r="2.8" fill="currentColor" opacity=".45"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.7 6.3.9-4.55 4.43 1.07 6.27L12 17.13 6.38 20.1l1.07-6.27L2.9 9.4l6.3-.9z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11L12 4l8.5 7M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.8" fill="currentColor"/><rect x="13" y="4" width="7" height="7" rx="1.8" fill="currentColor"/><rect x="4" y="13" width="7" height="7" rx="1.8" fill="currentColor"/><rect x="13" y="13" width="7" height="7" rx="1.8" fill="currentColor"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2.3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><circle cx="12" cy="15" r="2" fill="currentColor"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 9v4.5l3 2M9.5 2.5h5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-moves" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="app">
+    <!-- HOME -->
+    <section class="screen" id="screen-home" aria-label="Home">
+      <div class="home-inner">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 220 120" class="logo-art">
+            <defs>
+              <linearGradient id="lg-wood" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#f6d197"/><stop offset="1" stop-color="#d9964f"/></linearGradient>
+              <linearGradient id="lg-wood2" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#c8f0d6"/><stop offset="1" stop-color="#5cc58e"/></linearGradient>
+              <linearGradient id="lg-wood3" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#f0b23a"/></linearGradient>
+              <radialGradient id="lg-ball" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ff9aa4"/><stop offset="0.45" stop-color="#f23a55"/><stop offset="1" stop-color="#8f0f2a"/></radialGradient>
+            </defs>
+            <g class="logo-tiles">
+              <rect x="6" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="6" y="40" width="64" height="64" rx="12" fill="url(#lg-wood2)"/>
+              <rect x="78" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="78" y="40" width="64" height="64" rx="12" fill="url(#lg-wood)"/>
+              <rect x="150" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="150" y="40" width="64" height="64" rx="12" fill="url(#lg-wood3)"/>
+              <path d="M38 72H182" stroke="#3c200c88" stroke-width="24"/>
+              <path d="M38 72H182" stroke="#ffcc33" stroke-width="15"/>
+              <path d="M38 72H182" stroke="#fffad7" stroke-width="5" opacity=".9"/>
+              <circle cx="182" cy="72" r="13" fill="#2a1804" stroke="#ffe48a" stroke-width="3.5"/>
+              <circle class="logo-ball" cx="38" cy="72" r="12" fill="url(#lg-ball)"/>
+            </g>
+          </svg>
+          <h1 class="title">Ball <span>Path</span></h1>
+          <p class="tagline">Slide · Connect · Roll</p>
+        </div>
+
+        <div class="home-stars" id="home-stars"><svg><use href="#i-star"/></svg><span>0</span></div>
+
+        <button class="btn btn-primary btn-xl" data-action="play">
+          <svg><use href="#i-play"/></svg>
+          <span class="btn-label">Play<small id="home-play-sub">Level 1</small></span>
+        </button>
+
+        <div class="home-grid">
+          <button class="btn btn-tile" data-action="levels"><svg><use href="#i-grid"/></svg><span>Levels</span></button>
+          <button class="btn btn-tile btn-daily" data-action="daily"><svg><use href="#i-calendar"/></svg><span>Daily</span><em class="badge" id="daily-badge" hidden>New</em></button>
+          <button class="btn btn-tile btn-challenge" data-action="mode" data-mode="challenge"><svg><use href="#i-bolt"/></svg><span>Challenge</span></button>
+          <button class="btn btn-tile btn-time" data-action="mode" data-mode="timetrial"><svg><use href="#i-clock"/></svg><span>Time Trial</span></button>
+        </div>
+
+        <div class="home-footer">
+          <button class="icon-btn" data-action="settings" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+          <button class="icon-btn" data-action="toggle-sound" aria-label="Toggle sound" id="home-sound"><svg><use href="#i-sound"/></svg></button>
+          <button class="icon-btn" data-action="toggle-music" aria-label="Toggle music" id="home-music"><svg><use href="#i-music"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEVEL SELECT -->
+    <section class="screen" id="screen-levels" aria-label="Level selection">
+      <header class="topbar">
+        <button class="icon-btn" data-action="home" aria-label="Back to home"><svg><use href="#i-back"/></svg></button>
+        <h2>Levels</h2>
+        <div class="star-count" id="levels-stars"><svg><use href="#i-star"/></svg><span>0</span></div>
+      </header>
+      <div class="tabs" role="tablist">
+        <button role="tab" class="tab" data-action="tab" data-mode="classic">Classic</button>
+        <button role="tab" class="tab" data-action="tab" data-mode="challenge">Challenge</button>
+        <button role="tab" class="tab" data-action="tab" data-mode="timetrial">Time Trial</button>
+      </div>
+      <p class="mode-desc" id="mode-desc"></p>
+      <div class="level-scroll"><div id="level-grid"></div></div>
+    </section>
+
+    <!-- GAME -->
+    <section class="screen" id="screen-game" aria-label="Game">
+      <header class="topbar game-top">
+        <button class="icon-btn" data-action="pause" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+        <div class="level-title">
+          <h2 id="hud-title">Level 1</h2>
+          <span class="chip" id="hud-tier">Beginner</span>
+        </div>
+        <button class="icon-btn" data-action="toggle-sound" aria-label="Toggle sound" id="game-sound"><svg><use href="#i-sound"/></svg></button>
+      </header>
+      <div class="hud-stats">
+        <div class="stat"><svg><use href="#i-moves"/></svg><div><small>Moves</small><b id="hud-moves">0</b></div></div>
+        <div class="stat"><svg><use href="#i-flag"/></svg><div><small id="hud-target-label">Par</small><b id="hud-target">0</b></div></div>
+        <div class="stat" id="hud-time-stat"><svg><use href="#i-clock"/></svg><div><small id="hud-time-label">Time</small><b id="hud-time">0:00</b></div></div>
+      </div>
+      <div class="board-wrap" id="board-wrap">
+        <canvas id="board" aria-label="Puzzle board. Drag wooden tiles into empty slots to connect the pipe from the green start to the gold goal."></canvas>
+      </div>
+      <div class="status-line" id="status-line" aria-live="polite">Slide tiles to connect the pipe.</div>
+      <footer class="controls">
+        <button class="ctrl" data-action="undo" aria-label="Undo"><svg><use href="#i-undo"/></svg><span>Undo</span></button>
+        <button class="ctrl" data-action="restart" aria-label="Restart"><svg><use href="#i-restart"/></svg><span>Restart</span></button>
+        <button class="ctrl" data-action="hint" aria-label="Hint"><svg><use href="#i-bulb"/></svg><span>Hint</span></button>
+        <button class="ctrl ctrl-play" data-action="roll" id="btn-roll" aria-label="Roll the ball"><svg><use href="#i-play"/></svg><span>Play</span></button>
+      </footer>
+    </section>
+
+    <!-- OVERLAYS -->
+    <div class="overlay" id="overlay-pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="panel">
+        <h2 id="pause-title">Paused</h2>
+        <div class="panel-actions">
+          <button class="btn btn-primary" data-action="resume"><svg><use href="#i-play"/></svg>Resume</button>
+          <button class="btn" data-action="restart"><svg><use href="#i-restart"/></svg>Restart</button>
+          <button class="btn" data-action="settings"><svg><use href="#i-gear"/></svg>Settings</button>
+          <button class="btn" data-action="quit-levels"><svg><use href="#i-grid"/></svg>Levels</button>
+          <button class="btn" data-action="quit-home"><svg><use href="#i-home"/></svg>Home</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-win" role="dialog" aria-modal="true" aria-labelledby="win-title">
+      <div class="panel panel-win">
+        <div class="win-burst" aria-hidden="true"></div>
+        <h2 id="win-title">Level Complete!</h2>
+        <div class="win-stars" id="win-stars">
+          <svg class="wstar"><use href="#i-star"/></svg>
+          <svg class="wstar big"><use href="#i-star"/></svg>
+          <svg class="wstar"><use href="#i-star"/></svg>
+        </div>
+        <p class="win-note" id="win-note"></p>
+        <div class="win-stats">
+          <div><small>Moves</small><b id="win-moves">0</b></div>
+          <div><small>Time</small><b id="win-time">0:00</b></div>
+          <div><small>Best</small><b id="win-best">0</b></div>
+        </div>
+        <div class="panel-actions row">
+          <button class="btn" data-action="replay"><svg><use href="#i-restart"/></svg>Replay</button>
+          <button class="btn btn-primary" data-action="next" id="btn-next"><span id="btn-next-label">Next</span><svg><use href="#i-next"/></svg></button>
+        </div>
+        <button class="link-btn" data-action="win-menu" id="btn-win-menu">Level select</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-fail" role="dialog" aria-modal="true" aria-labelledby="fail-title">
+      <div class="panel">
+        <h2 id="fail-title">Path broken</h2>
+        <p id="fail-msg"></p>
+        <div class="panel-actions">
+          <button class="btn btn-primary" data-action="fail-continue" id="btn-fail-continue">Keep trying</button>
+          <button class="btn" data-action="fail-retry"><svg><use href="#i-restart"/></svg>Restart level</button>
+          <button class="btn" data-action="quit-levels"><svg><use href="#i-grid"/></svg>Levels</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="panel">
+        <h2 id="settings-title">Settings</h2>
+        <div class="settings-list">
+          <label class="setting"><span>Sound effects</span><input type="checkbox" data-setting="sound"><i class="switch"></i></label>
+          <label class="setting"><span>Music</span><input type="checkbox" data-setting="music"><i class="switch"></i></label>
+          <label class="setting"><span>Vibration</span><input type="checkbox" data-setting="vibration"><i class="switch"></i></label>
+          <div class="setting">
+            <span>Animations</span>
+            <div class="seg" role="radiogroup" aria-label="Animations">
+              <button data-action="set-anim" data-value="full" role="radio">Full</button>
+              <button data-action="set-anim" data-value="reduced" role="radio">Reduced</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-primary" data-action="close-settings">Done</button>
+          <button class="btn btn-danger" data-action="reset-progress">Reset progress</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="panel">
+        <h2 id="confirm-title">Are you sure?</h2>
+        <p id="confirm-msg"></p>
+        <div class="panel-actions row">
+          <button class="btn" data-action="confirm-no">Cancel</button>
+          <button class="btn btn-danger" data-action="confirm-yes" id="confirm-yes">Yes</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-loading" aria-live="polite">
+      <div class="panel panel-loading"><div class="spinner"></div><p>Building today's puzzle…</p></div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- Core logic (DOM-free, unit-tested in Node) -->
+  <script src="js/core/constants.js"></script>
+  <script src="js/core/tiles.js"></script>
+  <script src="js/core/rng.js"></script>
+  <script src="js/core/board.js"></script>
+  <script src="js/core/pathfinding.js"></script>
+  <script src="js/core/generator.js"></script>
+  <script src="js/core/session.js"></script>
+  <!-- Level data (kept separate from logic) -->
+  <script src="js/data/levels.js"></script>
+  <!-- Game systems -->
+  <script src="js/game/level-manager.js"></script>
+  <script src="js/game/save-manager.js"></script>
+  <script src="js/game/audio-manager.js"></script>
+  <script src="js/game/geometry.js"></script>
+  <script src="js/game/fx.js"></script>
+  <script src="js/game/renderer.js"></script>
+  <script src="js/game/ball-controller.js"></script>
+  <script src="js/game/input-controller.js"></script>
+  <script src="js/game/engine.js"></script>
+  <!-- UI -->
+  <script src="js/ui/ui-manager.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
