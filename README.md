@@ -11,6 +11,10 @@ Pure HTML5 + CSS3 + vanilla JavaScript (ES6+) on Canvas, with no build step.
 - **Audio:** all sounds and music are synthesized live with the Web Audio API, so there
   are no audio files.
 
+> **Native mobile app:** [`mobile/`](mobile/) contains **Ball Roll**, the installable
+> Android/iOS version, built with React Native + Expo + Skia. It has the same levels and
+> rules. See [mobile/README.md](mobile/README.md) and [mobile/BUILDING.md](mobile/BUILDING.md).
+
 ## Run it
 
 Any static file server works. From this folder:
