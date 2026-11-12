@@ -6,9 +6,7 @@
   <meta name="theme-color" content="#14263a">
   <meta name="description" content="Ball Path — slide the wooden pipe tiles, connect the track and roll the ball home.">
   <title>Ball Path</title>
-  <link rel="icon" type="image/webp" href="assets/img/ball.webp">
-  <link rel="preload" as="image" href="assets/img/tile-straight-h.webp">
-  <link rel="preload" as="image" href="assets/img/ball.webp">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='14' fill='%23e3a35c'/%3E%3Cpath d='M32 4v14a14 14 0 0 0 14 14h14' fill='none' stroke='%23c9d2da' stroke-width='12'/%3E%3Ccircle cx='24' cy='42' r='10' fill='%23f23a55'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
@@ -21,18 +19,32 @@
     <section class="screen" id="screen-home" aria-label="Home">
       <div class="home-inner">
         <div class="logo" aria-hidden="true">
-          <div class="logo-board">
-            <img src="assets/img/tile-straight-h.webp" alt="">
-            <img src="assets/img/tile-straight-h.webp" alt="">
-            <img src="assets/img/tile-straight-h.webp" alt="">
-            <span class="logo-hole"></span>
-            <img class="logo-ball" src="assets/img/ball.webp" alt="">
-          </div>
+          <svg viewBox="0 0 220 120" class="logo-art">
+            <defs>
+              <linearGradient id="lg-wood" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#f6d197"/><stop offset="1" stop-color="#d9964f"/></linearGradient>
+              <linearGradient id="lg-wood2" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#c8f0d6"/><stop offset="1" stop-color="#5cc58e"/></linearGradient>
+              <linearGradient id="lg-wood3" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#f0b23a"/></linearGradient>
+              <radialGradient id="lg-ball" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ff9aa4"/><stop offset="0.45" stop-color="#f23a55"/><stop offset="1" stop-color="#8f0f2a"/></radialGradient>
+            </defs>
+            <g class="logo-tiles">
+              <rect x="6" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="6" y="40" width="64" height="64" rx="12" fill="url(#lg-wood2)"/>
+              <rect x="78" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="78" y="40" width="64" height="64" rx="12" fill="url(#lg-wood)"/>
+              <rect x="150" y="40" width="64" height="64" rx="12" fill="#00000055" transform="translate(0 4)"/>
+              <rect x="150" y="40" width="64" height="64" rx="12" fill="url(#lg-wood3)"/>
+              <path d="M38 72H182" stroke="#3c200c88" stroke-width="24"/>
+              <path d="M38 72H182" stroke="#ffcc33" stroke-width="15"/>
+              <path d="M38 72H182" stroke="#fffad7" stroke-width="5" opacity=".9"/>
+              <circle cx="182" cy="72" r="13" fill="#2a1804" stroke="#ffe48a" stroke-width="3.5"/>
+              <circle class="logo-ball" cx="38" cy="72" r="12" fill="url(#lg-ball)"/>
+            </g>
+          </svg>
           <h1 class="title">Ball <span>Path</span></h1>
           <p class="tagline">Slide · Connect · Roll</p>
         </div>
 
-        <div class="home-stars" id="home-stars"><img class="star-img" src="assets/img/star.webp" alt=""><span>0</span></div>
+        <div class="home-stars" id="home-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
 
         <button class="btn btn-primary btn-xl" data-action="play">
           <i class="bi bi-play-circle-fill"></i>
@@ -59,7 +71,7 @@
       <header class="topbar">
         <button class="icon-btn" data-action="home" aria-label="Back to home"><i class="bi bi-chevron-left"></i></button>
         <h2>Levels</h2>
-        <div class="star-count" id="levels-stars"><img class="star-img" src="assets/img/star.webp" alt=""><span>0</span></div>
+        <div class="star-count" id="levels-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
       </header>
       <div class="tabs" role="tablist">
         <button role="tab" class="tab" data-action="tab" data-mode="classic"><i class="bi bi-joystick"></i> Classic</button>
@@ -118,9 +130,9 @@
         <div class="panel-icon win"><i class="bi bi-trophy-fill"></i></div>
         <h2 id="win-title">Level Complete!</h2>
         <div class="win-stars" id="win-stars">
-          <img class="wstar" src="assets/img/star.webp" alt="">
-          <img class="wstar big" src="assets/img/star.webp" alt="">
-          <img class="wstar" src="assets/img/star.webp" alt="">
+          <i class="bi bi-star-fill wstar"></i>
+          <i class="bi bi-star-fill wstar big"></i>
+          <i class="bi bi-star-fill wstar"></i>
         </div>
         <p class="win-note" id="win-note"></p>
         <div class="win-stats">
@@ -205,7 +217,6 @@
   <script src="js/game/level-manager.js"></script>
   <script src="js/game/save-manager.js"></script>
   <script src="js/game/audio-manager.js"></script>
-  <script src="js/game/assets.js"></script>
   <script src="js/game/geometry.js"></script>
   <script src="js/game/fx.js"></script>
   <script src="js/game/renderer.js"></script>

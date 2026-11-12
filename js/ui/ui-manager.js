@@ -171,7 +171,7 @@
             btn.dataset.n = n;
             const stars = res ? res.stars : 0;
             btn.setAttribute('aria-label', `Level ${n}${res ? `, ${stars} stars` : ''}`);
-            btn.innerHTML = `<span class="lv-num">${n}</span><span class="lv-stars" aria-hidden="true">${[0, 1, 2].map((i) => `<img class="${i < stars ? 'on' : ''}" src="assets/img/star.webp" alt="">`).join('')}</span>`;
+            btn.innerHTML = `<span class="lv-num">${n}</span><span class="lv-stars" aria-hidden="true">${[0, 1, 2].map((i) => `<i class="bi bi-star-fill${i < stars ? ' on' : ''}"></i>`).join('')}</span>`;
             if (res) btn.classList.add('done');
             if (n === current && !res) btn.classList.add('current');
           }

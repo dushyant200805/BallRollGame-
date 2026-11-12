@@ -5,9 +5,7 @@ green start tile to the gold goal, then press **Play** and watch the ball roll h
 
 Pure HTML5 + CSS3 + vanilla JavaScript (ES6+) on Canvas, with no build step.
 
-- **Graphics:** wooden tile, marble ball and star renders in `assets/img/` (about 75 KB
-  in total). Bolted, stone, start and goal looks are tinted from the same images at load
-  time. If the images fail to load, the board falls back to tiles drawn in code.
+- **Graphics:** all drawn in code (Canvas and inline SVG), so there are no image files.
 - **Icons:** [Bootstrap Icons](https://icons.getbootstrap.com/) 1.11.3, loaded from the
   jsDelivr CDN.
 - **Audio:** all sounds and music are synthesized live with the Web Audio API, so there
