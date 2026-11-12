@@ -45,9 +45,17 @@ Connected pipes glow teal; a complete path turns gold and the Play button pulses
 
 ## Game modes
 
-- **Classic**: levels in order; finishing a level unlocks the next.
-- **Challenge**: strict move limit (par + 60%, at least +3). Running out of moves with a broken path loses the level.
-- **Time Trial**: countdown clock per level; the clock pauses while the game is paused.
+Classic, Challenge and Time Trial each have **their own 20 levels** with a different
+puzzle style and a steeper difficulty curve:
+
+- **Classic**: a teaching ramp from 1-move puzzles up to 7×7 boards with bolted tiles
+  (par 1 → 16). Finishing a level unlocks the next.
+- **Challenge**: sliding-puzzle style with only **one** empty slot, plus bolted tiles and
+  stone blocks (par 6 → 22+). The move limit shrinks from par + 50% on level 1 to
+  par + 10% on level 20. Running out of moves with a broken path loses the level.
+- **Time Trial**: big 7×7 boards with three empty slots and lots of decoy pipes (par 4 → 13).
+  The time allowed per move drops from 8 s to 4 s as you progress. The clock pauses
+  while the game is paused.
 - **Daily Challenge**: one puzzle per calendar day, generated from the date as a seed, so everyone gets the same puzzle. Tracks a streak.
 
 Each mode keeps its own unlocks, stars and best scores.
@@ -89,16 +97,16 @@ solvable), and is then measured by BFS to get its exact par. Generation is seede
 re-running the script produces the same levels.
 
 ```bash
-node tools/generate-levels.js 10    # regenerate js/data/levels.js with N levels
-node tools/test-core.js             # 27 tests: rules, pathfinding, session, every level, daily
+node tools/generate-levels.js              # regenerate all modes (20 levels each)
+node tools/generate-levels.js challenge    # regenerate one mode, keep the others
+node tools/test-core.js                    # rules, pathfinding, session, every level, daily
 ```
 
-The tests check every level independently: it must not start solved, BFS must find a
-solution of exactly `par` moves, and the stored solution must win.
+The tests check every level of every mode independently: it must not start solved, BFS
+must find a solution of exactly `par` moves, and the stored solution must win.
 
-Difficulty tiers: Beginner 1–10, Easy 11–30, Medium 31–60, Hard 61–100, Expert 101+.
-This MVP ships the 10 Beginner levels; the generator already has a scaling plan for
-higher levels (bigger boards, more bolted tiles, deeper scrambles).
+Each mode's difficulty plan lives in `PLANS` in `tools/generate-levels.js`, and its tier
+names (Beginner → Master) live in `js/game/level-manager.js`.
 
 ## Saved data (LocalStorage key `ballpath.save.v1`)
 

@@ -63,7 +63,7 @@
 
     // ---- level lifecycle --------------------------------------------------
     startLevel(mode, number, { resume = true } = {}) {
-      const level = LevelManager.get(number);
+      const level = LevelManager.get(mode, number);
       if (!level) return;
       this.mode = mode;
       this.number = number;
@@ -250,16 +250,16 @@
         isBest = !prev || s.moves < prev.bestMoves;
         best = SaveManager.dailyResult(this.dailyKey).bestMoves;
       } else {
-        const r = SaveManager.recordWin(this.mode, this.number, { stars, moves: s.moves, time }, LevelManager.count());
+        const r = SaveManager.recordWin(this.mode, this.number, { stars, moves: s.moves, time }, LevelManager.count(this.mode));
         isBest = r.isBest && !!r.previous;
         best = SaveManager.levelResult(this.mode, this.number).bestMoves;
       }
-      const hasNext = this.mode !== 'daily' && this.number < LevelManager.count();
+      const hasNext = this.mode !== 'daily' && this.number < LevelManager.count(this.mode);
       setTimeout(() => {
         BP.UI.showWin({
           stars, moves: s.moves, time, par: this.level.par, best, isBest,
           hasNext, mode: this.mode, hintsUsed: s.hintsUsed,
-          isLast: this.mode !== 'daily' && this.number === LevelManager.count(),
+          isLast: this.mode !== 'daily' && this.number === LevelManager.count(this.mode),
         });
       }, this.renderer.reduced ? 150 : 650);
     },
@@ -297,7 +297,7 @@
     next() {
       BP.UI.closeAllOverlays();
       if (this.mode === 'daily') { BP.UI.showScreen('home'); return; }
-      if (this.number < LevelManager.count()) this.startLevel(this.mode, this.number + 1, { resume: false });
+      if (this.number < LevelManager.count(this.mode)) this.startLevel(this.mode, this.number + 1, { resume: false });
       else BP.UI.showLevels(this.mode);
     },
 

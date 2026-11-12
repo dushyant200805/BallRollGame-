@@ -2,18 +2,34 @@
 (function (BP) {
   'use strict';
 
-  const TIERS = [
-    { name: 'Beginner', from: 1, to: 10, color: '#4cc38a' },
-    { name: 'Easy', from: 11, to: 30, color: '#3fa7e0' },
-    { name: 'Medium', from: 31, to: 60, color: '#f0a83a' },
-    { name: 'Hard', from: 61, to: 100, color: '#e8644a' },
-    { name: 'Expert', from: 101, to: Infinity, color: '#a35ee0' },
-  ];
+  const C = { beginner: '#4cc38a', easy: '#3fa7e0', medium: '#f0a83a', hard: '#e8644a', expert: '#a35ee0', master: '#e0446e' };
+
+  // Each mode has its own level set and its own difficulty curve.
+  const TIERS = {
+    classic: [
+      { name: 'Beginner', from: 1, to: 6, color: C.beginner },
+      { name: 'Easy', from: 7, to: 12, color: C.easy },
+      { name: 'Medium', from: 13, to: 17, color: C.medium },
+      { name: 'Hard', from: 18, to: Infinity, color: C.hard },
+    ],
+    challenge: [
+      { name: 'Medium', from: 1, to: 5, color: C.medium },
+      { name: 'Hard', from: 6, to: 11, color: C.hard },
+      { name: 'Expert', from: 12, to: 16, color: C.expert },
+      { name: 'Master', from: 17, to: Infinity, color: C.master },
+    ],
+    timetrial: [
+      { name: 'Easy', from: 1, to: 4, color: C.easy },
+      { name: 'Medium', from: 5, to: 10, color: C.medium },
+      { name: 'Hard', from: 11, to: 15, color: C.hard },
+      { name: 'Expert', from: 16, to: Infinity, color: C.expert },
+    ],
+  };
 
   const MODES = {
-    classic: { id: 'classic', label: 'Classic', desc: 'Play the levels in order. Fewer moves earn more stars.' },
-    challenge: { id: 'challenge', label: 'Challenge', desc: 'Every level has a strict move limit.' },
-    timetrial: { id: 'timetrial', label: 'Time Trial', desc: 'Beat the clock before it runs out.' },
+    classic: { id: 'classic', label: 'Classic', desc: 'Learn the ropes, then take on big boards. Fewer moves earn more stars.' },
+    challenge: { id: 'challenge', label: 'Challenge', desc: 'Only one empty slot, bolted tiles and a move limit that keeps shrinking.' },
+    timetrial: { id: 'timetrial', label: 'Time Trial', desc: 'Huge boards full of decoys, and the clock gets tighter every level.' },
     daily: { id: 'daily', label: 'Daily', desc: 'A fresh puzzle every day.' },
   };
 
@@ -28,21 +44,40 @@
     TIERS,
     MODES,
 
-    count() { return (BP.LEVEL_DATA || []).length; },
-
-    /** 1-based level lookup. */
-    get(n) {
-      const data = BP.LEVEL_DATA[n - 1];
-      if (!data) return null;
-      return { ...data, number: n, tier: LevelManager.tierOf(n) };
+    setFor(mode) {
+      const sets = BP.LEVEL_SETS || {};
+      return sets[mode] || sets.classic || [];
     },
 
-    tierOf(n) { return TIERS.find((t) => n >= t.from && n <= t.to) || TIERS[TIERS.length - 1]; },
+    tiersFor(mode) { return TIERS[mode] || TIERS.classic; },
 
-    /** Mode-specific constraints for a level. */
+    count(mode = 'classic') { return LevelManager.setFor(mode).length; },
+
+    /** 1-based level lookup within a mode's own level set. */
+    get(mode, n) {
+      const data = LevelManager.setFor(mode)[n - 1];
+      if (!data) return null;
+      return { ...data, number: n, tier: LevelManager.tierOf(mode, n) };
+    },
+
+    tierOf(mode, n) {
+      const tiers = LevelManager.tiersFor(mode);
+      return tiers.find((t) => n >= t.from && n <= t.to) || tiers[tiers.length - 1];
+    },
+
+    /** Mode-specific constraints for a level; they tighten as levels progress. */
     limitsFor(mode, level) {
-      if (mode === 'challenge') return { moveLimit: level.par + Math.max(3, Math.ceil(level.par * 0.6)) };
-      if (mode === 'timetrial') return { timeLimit: Math.round(20 + level.par * 7 + level.size * 2) };
+      const t = Math.min(1, Math.max(0, ((level.number || 1) - 1) / Math.max(1, LevelManager.count(mode) - 1)));
+      if (mode === 'challenge') {
+        // Spare moves shrink from +50% of par on level 1 to +10% on the last level.
+        const spare = Math.max(2, Math.ceil(level.par * (0.5 - 0.4 * t)));
+        return { moveLimit: level.par + spare };
+      }
+      if (mode === 'timetrial') {
+        // Seconds allowed per par move drop from 8 to 4.
+        const perMove = 8 - 4 * t;
+        return { timeLimit: Math.round(10 + level.par * perMove + level.size * 2) };
+      }
       return {};
     },
 

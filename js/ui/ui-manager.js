@@ -113,13 +113,13 @@
     nextLevelFor(mode) {
       const p = SaveManager.modeProgress(mode);
       for (let n = 1; n <= p.unlocked; n++) if (!p.levels[n]) return n;
-      return Math.min(p.unlocked, LevelManager.count());
+      return Math.min(p.unlocked, LevelManager.count(mode));
     },
 
     renderHome() {
       const cur = SaveManager.data.current;
       const n = cur && cur.mode === 'classic' ? cur.number : UI.nextLevelFor('classic');
-      const allDone = Object.keys(SaveManager.modeProgress('classic').levels).length >= LevelManager.count();
+      const allDone = Object.keys(SaveManager.modeProgress('classic').levels).length >= LevelManager.count('classic');
       $('#home-play-sub').textContent = cur && cur.mode === 'classic' ? `Continue level ${n}` : allDone ? 'All levels complete!' : `Level ${n}`;
       const total = SaveManager.MODE_IDS.reduce((s, m) => s + SaveManager.totalStars(m), 0);
       $('#home-stars span').textContent = total;
@@ -140,12 +140,12 @@
       levelsMode = mode;
       $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.mode === mode)));
       $('#mode-desc').textContent = LevelManager.MODES[mode].desc;
-      $('#levels-stars span').textContent = `${SaveManager.totalStars(mode)} / ${LevelManager.count() * 3}`;
+      $('#levels-stars span').textContent = `${SaveManager.totalStars(mode)} / ${LevelManager.count(mode) * 3}`;
       const grid = $('#level-grid');
       grid.innerHTML = '';
       const current = UI.nextLevelFor(mode);
-      const count = LevelManager.count();
-      LevelManager.TIERS.forEach((tier) => {
+      const count = LevelManager.count(mode);
+      LevelManager.tiersFor(mode).forEach((tier) => {
         if (tier.from > count) return;
         const to = Math.min(tier.to, count);
         const head = document.createElement('div');

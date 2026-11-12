@@ -122,20 +122,22 @@ test('snapshot/restore round-trips', () => {
   assert.deepStrictEqual(s2.board.toRows(), lvl.rows);
 });
 
-console.log(`Levels (${LevelManager.count()})`);
-for (let n = 1; n <= LevelManager.count(); n++) {
-  test(`level ${n}: unsolved at start, BFS par matches, stored solution wins`, () => {
-    const level = LevelManager.get(n);
+for (const mode of ['classic', 'challenge', 'timetrial']) {
+console.log(`Levels: ${mode} (${LevelManager.count(mode)})`);
+for (let n = 1; n <= LevelManager.count(mode); n++) {
+  test(`${mode} ${n}: unsolved at start, BFS par matches, stored solution wins`, () => {
+    const level = LevelManager.get(mode, n);
     const board = Board.fromRows(level.rows);
     assert.strictEqual(board.w, level.size);
     assert.strictEqual(Pathfinding.trace(board).ok, false, 'already solved');
-    const res = Pathfinding.solve(board, { maxNodes: 2000000 });
+    const res = Pathfinding.solve(board, { maxNodes: 4000000 });
     assert.ok(res.moves, 'BFS found no solution');
     assert.strictEqual(res.moves.length, level.par, 'par mismatch');
     const s = new GameSession(level);
     for (const [x, y, dir] of level.solution) assert.ok(s.tryMove(x, y, dir).ok, 'illegal stored move');
     assert.strictEqual(s.finishRoll(s.startRoll()), 'won');
   });
+}
 }
 
 console.log('Daily');
