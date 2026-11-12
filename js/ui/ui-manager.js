@@ -164,14 +164,14 @@
             btn.classList.add('locked');
             btn.disabled = true;
             btn.setAttribute('aria-label', `Level ${n}, locked`);
-            btn.innerHTML = '<svg class="lock"><use href="#i-lock"/></svg>';
+            btn.innerHTML = '<i class="bi bi-lock-fill lock" aria-hidden="true"></i>';
           } else {
             btn.dataset.action = 'level';
             btn.dataset.mode = mode;
             btn.dataset.n = n;
             const stars = res ? res.stars : 0;
             btn.setAttribute('aria-label', `Level ${n}${res ? `, ${stars} stars` : ''}`);
-            btn.innerHTML = `<span>${n}</span><span class="lv-stars">${[0, 1, 2].map((i) => `<svg class="${i < stars ? 'on' : ''}"><use href="#i-star"/></svg>`).join('')}</span>`;
+            btn.innerHTML = `<span class="lv-num">${n}</span><span class="lv-stars" aria-hidden="true">${[0, 1, 2].map((i) => `<img class="${i < stars ? 'on' : ''}" src="assets/img/star.webp" alt="">`).join('')}</span>`;
             if (res) btn.classList.add('done');
             if (n === current && !res) btn.classList.add('current');
           }
@@ -192,6 +192,7 @@
       chip.textContent = modeLabel + level.tier.name;
       chip.style.setProperty('--tier', level.tier.color);
       $('#hud-target-label').textContent = mode === 'challenge' ? 'Moves left' : 'Par';
+      $('#hud-target-icon').className = 'bi ' + (mode === 'challenge' ? 'bi-lightning-charge-fill' : 'bi-flag-fill');
       $('#hud-time-label').textContent = mode === 'timetrial' ? 'Time left' : 'Time';
       UI.setControlsEnabled(true);
       UI.syncAudioIcons();
@@ -272,7 +273,8 @@
       });
     },
 
-    showFail({ title, msg, canContinue }) {
+    showFail({ title, msg, canContinue, icon }) {
+      $('#fail-icon').className = 'bi ' + (icon || 'bi-exclamation-octagon-fill');
       $('#fail-title').textContent = title;
       $('#fail-msg').textContent = msg;
       $('#btn-fail-continue').hidden = !canContinue;
@@ -312,12 +314,13 @@
       const s = SaveManager.settings;
       ['#home-sound', '#game-sound'].forEach((id) => {
         const b = $(id);
-        b.querySelector('use').setAttribute('href', s.sound ? '#i-sound' : '#i-sound-off');
+        b.querySelector('.bi').className = 'bi ' + (s.sound ? 'bi-volume-up-fill' : 'bi-volume-mute-fill');
         b.classList.toggle('off', !s.sound);
+        b.setAttribute('aria-pressed', String(!!s.sound));
       });
       const m = $('#home-music');
-      m.querySelector('use').setAttribute('href', s.music ? '#i-music' : '#i-music-off');
-      m.classList.toggle('off', !s.music);
+      m.classList.toggle('off', !s.music); // CSS draws a slash over the note when off
+      m.setAttribute('aria-pressed', String(!!s.music));
     },
 
     confirm(title, msg, yesLabel = 'Yes') {

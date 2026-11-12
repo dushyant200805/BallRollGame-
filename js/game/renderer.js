@@ -234,7 +234,79 @@
       }
     }
 
+    spriteFor(tile) {
+      const A = BP.Assets;
+      if (!A || !A.ready) return null;
+      if (tile.t === TILE.PIPE) return A.tile('pipe', tile.o, tile.f ? 'walnut' : 'maple');
+      if (tile.t === TILE.BLOCK) return A.tile('block', 0);
+      if (tile.t === TILE.START) return A.tile('start', tile.o);
+      if (tile.t === TILE.END) return A.tile('end', tile.o);
+      return null;
+    }
+
+    /** Tile drawn from the wooden renders (preferred look). */
+    drawTileImage(ctx, tile, sprite, X, Y, glow, lifted, now) {
+      const s = this.s;
+      const pad = s * 0.022, w = s - pad * 2;
+      rr(ctx, X + pad + (lifted ? s * 0.02 : 0), Y + pad + s * (lifted ? 0.085 : 0.03), w, w, s * 0.06);
+      ctx.fillStyle = lifted ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.42)';
+      ctx.fill();
+      if (lifted) { X -= s * 0.01; Y -= s * 0.025; }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(sprite, X + pad, Y + pad, w, w);
+
+      if (tile.t === TILE.PIPE && tile.f) this.drawScrews(ctx, X + pad + w * 0.035, Y + pad + w * 0.035, w * 0.93);
+      if (tile.t === TILE.BLOCK) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(X + pad, Y + pad, w, w);
+        ctx.clip();
+        this.drawStone(ctx, X + pad, Y + pad, w, tile);
+        ctx.restore();
+      }
+
+      if (tile.t === TILE.PIPE && tile.o) {
+        if (glow !== 'normal') {
+          const [a, b] = Geometry.splitMask(tile.o);
+          this.drawFlow(ctx, X, Y, a, b, glow);
+        }
+      } else if (tile.t === TILE.START) {
+        this.drawFlow(ctx, X, Y, 0, tile.o, glow === 'complete' ? 'complete' : 'connected');
+        this.drawSocket(ctx, X, Y);
+      } else if (tile.t === TILE.END) {
+        if (glow !== 'normal') this.drawFlow(ctx, X, Y, tile.o, 0, glow);
+        this.drawHole(ctx, X, Y, glow === 'complete', now);
+      }
+    }
+
+    /** Glowing "flow" line inside a pipe channel that is connected to the start. */
+    drawFlow(ctx, X, Y, a, b, glow) {
+      const s = this.s;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(X + s * 0.07, Y + s * 0.07, s * 0.86, s * 0.86);
+      ctx.clip();
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      Geometry.tracePipe(ctx, X, Y, s, a, b);
+      ctx.shadowColor = COLORS.tube[glow];
+      ctx.shadowBlur = s * 0.2;
+      ctx.strokeStyle = COLORS.tube[glow];
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = s * 0.075;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = COLORS.tubeHi[glow];
+      ctx.lineWidth = s * 0.025;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     drawTile(ctx, tile, X, Y, glow, lifted, now) {
+      const sprite = this.spriteFor(tile);
+      if (sprite) { this.drawTileImage(ctx, tile, sprite, X, Y, glow, lifted, now); return; }
       const s = this.s;
       const pad = s * 0.05, r = s * 0.17;
       const x = X + pad, y = Y + pad, w = s - pad * 2;
@@ -380,12 +452,15 @@
 
     drawSocket(ctx, X, Y) {
       const s = this.s, cx = X + s / 2, cy = Y + s / 2;
+      const g = ctx.createRadialGradient(cx, cy - s * 0.03, s * 0.02, cx, cy, s * 0.17);
+      g.addColorStop(0, '#0d2a1b');
+      g.addColorStop(1, '#2e6b4a');
       ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.24, 0, Math.PI * 2);
-      ctx.fillStyle = '#1f6b47';
+      ctx.arc(cx, cy, s * 0.16, 0, Math.PI * 2);
+      ctx.fillStyle = g;
       ctx.fill();
-      ctx.lineWidth = s * 0.045;
-      ctx.strokeStyle = '#e6fff0';
+      ctx.lineWidth = s * 0.035;
+      ctx.strokeStyle = '#d9ffe8';
       ctx.stroke();
     }
 
@@ -398,14 +473,14 @@
         ctx.fillStyle = `rgba(255,214,70,${0.25 + pulse * 0.25})`;
         ctx.fill();
       }
-      const g = ctx.createRadialGradient(cx, cy - s * 0.04, s * 0.02, cx, cy, s * 0.22);
+      const g = ctx.createRadialGradient(cx, cy - s * 0.04, s * 0.02, cx, cy, s * 0.17);
       g.addColorStop(0, '#000');
       g.addColorStop(1, '#3a2408');
       ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.21, 0, Math.PI * 2);
+      ctx.arc(cx, cy, s * 0.16, 0, Math.PI * 2);
       ctx.fillStyle = g;
       ctx.fill();
-      ctx.lineWidth = s * 0.05;
+      ctx.lineWidth = s * 0.04;
       ctx.strokeStyle = '#ffe48a';
       ctx.stroke();
       // tiny flag

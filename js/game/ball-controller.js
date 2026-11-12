@@ -5,7 +5,7 @@
   'use strict';
   const { TILE, Geometry } = BP;
 
-  const RADIUS = 0.17; // in cell units
+  const RADIUS = 0.115; // in cell units — sits inside the ~0.2-wide pipe channel
 
   class BallController {
     constructor() { this.reset(); this.session = null; }
@@ -133,7 +133,27 @@
       ctx.beginPath();
       ctx.ellipse(x + rad * 0.15, y + rad * 0.55, rad * 0.95, rad * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
-      // body
+      const img = BP.Assets && BP.Assets.ready && BP.Assets.images.ball;
+      if (img) {
+        // Marble render: its highlight is baked in, so the image stays upright and only a
+        // faint moving sheen hints at the roll.
+        ctx.drawImage(img, x - rad, y - rad, rad * 2, rad * 2);
+        if (this.mode === 'rolling') {
+          const ph = Math.sin(this.rot);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, rad, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.fillStyle = `rgba(255,255,255,${0.1 + 0.08 * ph})`;
+          ctx.beginPath();
+          ctx.ellipse(x + hx * ph * rad * 0.5, y + hy * ph * rad * 0.5, rad * 0.25, rad * 0.9, Math.atan2(hy, hx), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+        return;
+      }
+      // body (procedural fallback)
       const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, rad * 0.1, x, y, rad);
       g.addColorStop(0, '#ff9aa4');
       g.addColorStop(0.45, '#f23a55');

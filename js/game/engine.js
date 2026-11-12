@@ -273,6 +273,7 @@
       BP.UI.setControlsEnabled(true);
       BP.UI.showFail({
         title: reason === 'time' ? "Time's up!" : 'Out of moves',
+        icon: reason === 'time' ? 'bi-hourglass-bottom' : 'bi-sign-stop-fill',
         msg: reason === 'time'
           ? 'The clock ran out before the ball reached the goal. Give it another go!'
           : 'You used every move without completing the path. Try a different route!',

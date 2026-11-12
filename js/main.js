@@ -11,6 +11,12 @@
     BP.Engine.applySettings();
     BP.UI.showScreen('home');
 
+    // Tile/ball images: the board draws procedurally until they are decoded.
+    BP.Assets.load().then((ok) => {
+      if (!ok) console.warn('Ball Path: some images failed to load; using drawn tiles instead.');
+      BP.Engine.renderer.dirty = true;
+    });
+
     // Browsers only allow audio after a user gesture.
     const unlock = () => {
       BP.AudioManager.unlock();
