@@ -5,8 +5,11 @@
   const KEY = 'ballpath.save.v1';
   const MODE_IDS = ['classic', 'challenge', 'timetrial'];
 
+  const LEVEL_SETS = 2;
+
   const defaults = () => ({
     version: 1,
+    levelSets: LEVEL_SETS,
     settings: { sound: true, music: true, vibration: true, animations: 'full' }, // 'full' | 'reduced'
     progress: {
       classic: { unlocked: 1, levels: {} },   // levels[n] = {stars, bestMoves, bestTime}
@@ -37,7 +40,15 @@
     load() {
       try {
         const raw = localStorage.getItem(KEY);
-        data = merge(defaults(), raw ? JSON.parse(raw) : null);
+        const saved = raw ? JSON.parse(raw) : null;
+        // Level set 2 gave Challenge and Time Trial brand-new levels, so results saved
+        // for the old shared levels no longer apply there.
+        if (isObj(saved) && (saved.levelSets || 1) < LEVEL_SETS) {
+          if (isObj(saved.progress)) { delete saved.progress.challenge; delete saved.progress.timetrial; }
+          if (saved.current && saved.current.mode !== 'classic' && saved.current.mode !== 'daily') saved.current = null;
+          saved.levelSets = LEVEL_SETS;
+        }
+        data = merge(defaults(), saved);
       } catch (e) {
         storageOk = false;
         data = defaults();
@@ -60,7 +71,12 @@
 
     modeProgress(mode) { return data.progress[mode]; },
 
-    isUnlocked(mode, n) { return n <= data.progress[mode].unlocked; },
+    /** A level is open if it was unlocked, or the level before it is completed (covers saves
+     *  made when a mode had fewer levels). */
+    isUnlocked(mode, n) {
+      const p = data.progress[mode];
+      return n <= p.unlocked || n === 1 || !!p.levels[n - 1];
+    },
 
     levelResult(mode, n) { return data.progress[mode].levels[n] || null; },
 
