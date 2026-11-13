@@ -1,5 +1,5 @@
 /* Renders the web game's synthesized sounds (js/game/audio-manager.js) to WAV files, offline.
- * Same recipes: oscillators with exponential envelopes, filtered noise, the rolling loop and
+ * Same recipes: oscillators with exponential envelopes, filtered noise, the per-ball rolling loops and
  * the I–vi–IV–V background music. Output: assets/audio/*.wav
  *   node scripts/synth-audio.js
  */
@@ -126,12 +126,16 @@ for (const [name, [len, fn]] of Object.entries(sfx)) {
   m.write(name);
 }
 
-// ---- rolling loop: low-passed noise (420 Hz, Q 3) at 0.16 with a 9 Hz ±0.05 wobble ----
+// ---- one rolling loop per ball skin, from the shared recipes in js/audio/ball-sound-recipes.js ----
 {
-  const len = 2;
-  const m = new Mix(len, 44100, true);
-  m.noise({ at: 0, dur: len, filter: 'lowpass', freq: 420, q: 3, envelope: (t) => 0.16 + 0.05 * Math.sin(2 * Math.PI * 9 * t) });
-  m.write('roll');
+  const BallSounds = require(path.join(__dirname, '..', '..', 'js', 'audio', 'ball-sound-recipes.js'));
+  fs.mkdirSync(path.join(OUT, 'balls'), { recursive: true });
+  for (const id of BallSounds.ids) {
+    const data = BallSounds.render(id, 22050);
+    const m = new Mix(data.length / 22050, 22050);
+    m.buf.set(data);
+    m.write('balls/' + id);
+  }
 }
 
 // ---- background music: I–vi–IV–V pads, bass and pentatonic pluck, 4 cycles, seamless loop ----

@@ -10,6 +10,8 @@ import { Storage, type Settings } from '../services/storage';
 import { AudioService } from '../services/audio';
 import { haptic } from '../services/haptics';
 import { useStorageVersion } from '../hooks/useStorage';
+import { VolumeSlider } from '../components/VolumeSlider';
+import type { Volumes } from '../services/storage';
 import type { ScreenProps } from '../navigation/types';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -26,6 +28,22 @@ export default function SettingsScreen({ navigation }: ScreenProps<'Settings'>) 
     if (name === 'vibration' && value) haptic('connect');
     if (name !== 'music') AudioService.play('click');
   };
+
+  const setVol = React.useCallback((name: keyof Volumes) => (v: number) => {
+    Storage.setVolume(name, v);
+    AudioService.setVolumes({ [name]: v });
+  }, []);
+  const sample = React.useCallback((name: keyof Volumes) => () => {
+    // a short sample when the finger lifts, so the level can be judged
+    if (name === 'roll') void AudioService.playPreview(Storage.selectedBall().id);
+    else if (name !== 'music') AudioService.play('connect');
+  }, []);
+  const handlers = React.useMemo(() => ({
+    master: [setVol('master'), sample('master')],
+    roll: [setVol('roll'), sample('roll')],
+    sfx: [setVol('sfx'), sample('sfx')],
+    music: [setVol('music'), sample('music')],
+  }) as const, [setVol, sample]);
 
   const confirmReset = () => {
     Alert.alert('Reset all progress?', 'Stars, unlocked levels and best scores will be erased. Settings are kept.', [
@@ -61,6 +79,16 @@ export default function SettingsScreen({ navigation }: ScreenProps<'Settings'>) 
           <Row icon="phone-portrait" label="Vibration">
             <Switch value={s.vibration} onValueChange={(v) => set('vibration', v)} trackColor={{ true: colors.teal, false: '#cdbfae' }} thumbColor="#fff" accessibilityLabel="Vibration" />
           </Row>
+        </View>
+
+        <View style={styles.card}>
+          <VolumeSlider label="Master volume" icon="volume-medium" value={s.volumes.master} onChange={handlers.master[0]} onComplete={handlers.master[1]} />
+          <VolumeSlider label="Ball rolling" icon="ellipse" value={s.volumes.roll} onChange={handlers.roll[0]} onComplete={handlers.roll[1]} />
+          <VolumeSlider label="Sound effects" icon="notifications" value={s.volumes.sfx} onChange={handlers.sfx[0]} onComplete={handlers.sfx[1]} />
+          <VolumeSlider label="Background music" icon="musical-notes" value={s.volumes.music} onChange={handlers.music[0]} onComplete={handlers.music[1]} />
+        </View>
+
+        <View style={styles.card}>
           <Row icon="sparkles" label="Animations" last>
             <View style={styles.seg} accessibilityRole="radiogroup">
               {(['full', 'reduced'] as const).map((v) => (

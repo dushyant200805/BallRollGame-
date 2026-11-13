@@ -114,6 +114,15 @@
       const reduced = SaveManager.settings.animations === 'reduced';
       this.renderer.reduced = reduced;
       document.body.classList.toggle('reduced', reduced);
+      this.applyBall();
+    },
+
+    /** Use the selected ball skin for drawing and for the rolling sound. */
+    applyBall() {
+      const skin = SaveManager.selectedBall();
+      this.ball.skin = skin;
+      AudioManager.setBall(skin.id);
+      if (this.renderer) this.renderer.dirty = true;
     },
 
     // ---- player actions ----------------------------------------------------
@@ -361,6 +370,7 @@
       }
       this.renderer.update(dt);
       this.ball.update(dt);
+      if (this.ball.mode === 'rolling') AudioManager.setRollIntensity(this.ball.intensity);
       if (BP.UI.currentScreen === 'game' && this.renderer.needsFrame()) this.renderer.render(now);
     },
   };

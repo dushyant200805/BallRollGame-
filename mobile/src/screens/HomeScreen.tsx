@@ -13,6 +13,8 @@ import { AudioService } from '../services/audio';
 import { LevelManager } from '../game/levelManager';
 import { useStorageVersion } from '../hooks/useStorage';
 import { playTarget, totalStarsAllModes } from '../utils/progress';
+import { Canvas, Picture } from '@shopify/react-native-skia';
+import { ballPicture } from '../game/render/ballPainter';
 import type { ScreenProps } from '../navigation/types';
 
 export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
@@ -24,6 +26,9 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const target = playTarget();
   const playSub = target.resume ? `Continue level ${target.number}` : target.allDone ? 'All levels complete!' : `Level ${target.number}`;
   const dailyDone = !!Storage.dailyResult(LevelManager.dailyKey());
+  const ball = Storage.selectedBall();
+  const ballPic = React.useMemo(() => ballPicture(ball, 40), [ball]);
+  const newBalls = Storage.unlockedBallCount() > (Storage.data.ballsSeen || 1);
   const s = Storage.settings;
 
   const toggleSound = () => {
@@ -85,6 +90,20 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               onPress={() => navigation.navigate('Levels', { mode: 'challenge' })} />
             <GameButton style={styles.cell} variant="violet" size="lg" label="Time Trial" icon={(ink) => <Ionicons name="stopwatch" size={22} color={ink} />}
               onPress={() => navigation.navigate('Levels', { mode: 'timetrial' })} />
+            <GameButton style={styles.wide} variant="orange" size="lg" accessibilityLabel={`Ball Collection${newBalls ? ', new balls unlocked' : ''}`}
+              onPress={() => navigation.navigate('Balls')}>
+              <View style={styles.row}>
+                <Canvas style={{ width: 40, height: 40 }}>
+                  <Picture picture={ballPic} />
+                </Canvas>
+                <Text style={styles.tileLabel}>Ball Collection</Text>
+              </View>
+              {newBalls ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>New</Text>
+                </View>
+              ) : null}
+            </GameButton>
           </View>
         </View>
 
@@ -107,6 +126,7 @@ const styles = StyleSheet.create({
   starsText: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
   cell: { width: '48.5%' },
+  wide: { width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tileLabel: { fontFamily: fonts.bold, fontSize: 18, color: '#fff' },
   badge: { position: 'absolute', top: -6, right: -10, backgroundColor: colors.gold, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },

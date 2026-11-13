@@ -27,6 +27,12 @@
 
     get animating() { return this.mode !== 'idle' && this.mode !== 'done'; }
 
+    /** Rolling speed relative to top speed (0..1), drives the rolling sound's intensity. */
+    get intensity() {
+      if (this.mode !== 'rolling') return 0;
+      return Math.min(1, this.speed / (this.reduced ? 12 : 6));
+    }
+
     /** @param trace result of Pathfinding.trace  @param cb {onArrive, onBreak, onDone} */
     roll(trace, cb, reduced) {
       this.reset();
@@ -125,49 +131,7 @@
       }
 
       const rad = s * RADIUS * scale;
-      if (rad <= 0.5 || alpha <= 0.02) return;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      // shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(x + rad * 0.15, y + rad * 0.55, rad * 0.95, rad * 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // body
-      const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, rad * 0.1, x, y, rad);
-      g.addColorStop(0, '#ff9aa4');
-      g.addColorStop(0.45, '#f23a55');
-      g.addColorStop(1, '#8f0f2a');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(x, y, rad, 0, Math.PI * 2);
-      ctx.fill();
-      // rolling stripe: a band that sweeps across the ball along the heading
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, rad, 0, Math.PI * 2);
-      ctx.clip();
-      for (const k of [0, Math.PI]) {
-        const ph = this.rot + k;
-        const vis = Math.sin(ph);
-        if (vis <= 0) continue;
-        const along = Math.cos(ph) * rad * 0.8;
-        ctx.save();
-        ctx.translate(x + hx * along, y + hy * along);
-        ctx.rotate(Math.atan2(hy, hx));
-        ctx.fillStyle = `rgba(255,240,200,${0.75 * vis})`;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rad * 0.16 * vis + 0.5, rad * 0.95, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
-      // specular highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.beginPath();
-      ctx.ellipse(x - rad * 0.38, y - rad * 0.42, rad * 0.26, rad * 0.16, -0.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      BP.BallPainter.drawBall(ctx, this.skin || BP.BallSkins.get('ruby'), x, y, rad, this.rot, hx, hy, alpha);
     }
 
     /** Current ball position in canvas pixels (for particle effects). */

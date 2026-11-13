@@ -23,6 +23,12 @@ It contains no WebView, works offline and needs no backend.
   - settings
   - about and privacy policy
 - Drag or tap tiles. Undo, restart, hint (instant on the optimal path) and Play.
+- **Ball Collection** of 18 skins, the same as the web version. They unlock with stars.
+  - Each ball has its own rolling sound, which fades in and out and follows the ball's speed.
+  - Each ball has a ▶ preview button.
+  - Settings has Master, Ball rolling, Sound effects and Music volume sliders.
+  - The 18 rolling loops (`assets/audio/balls/*.wav`) are rendered from the web game's
+    `js/audio/ball-sound-recipes.js`. Only the selected ball's loop is kept in memory.
 - The original wooden look, drawn in code: maple and walnut tiles with grain, brass screws,
   glowing tubes, a rolling ball, confetti and sparkles.
 - The original sounds and music, rendered from the web synth recipes.

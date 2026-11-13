@@ -132,8 +132,8 @@ These scripts produce files that are already committed. Run them only after chan
 
 | Command | What it does |
 |---|---|
-| `npm run convert-levels` | Copies `../js/data/levels.js` (web levels) → `src/game/data/levels.ts` |
-| `npm run synth-audio` | Renders the web synth sounds and music → `assets/audio/*.wav` |
+| `npm run convert-levels` | Copies the web levels and ball skins → `src/game/data/levels.ts`, `ballSkins.ts` |
+| `npm run synth-audio` | Renders the web synth sounds, music and 18 ball rolling loops → `assets/audio/` |
 | `npm run make-icons` | Draws the logo → app icon, adaptive icon, monochrome icon, splash |
 | `npm run prebuild` | Regenerates `android/` from `app.json` (the signing plugin re-applies itself) |
 

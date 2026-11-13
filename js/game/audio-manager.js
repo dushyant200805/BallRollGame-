@@ -1,12 +1,19 @@
 /* Ball Path — Audio manager: every sound is synthesized live with the Web Audio API
- * (no audio files), including a soft generative background music loop.
+ * (no audio files), including a soft generative background music loop and a unique rolling
+ * sound per ball skin (js/audio/ball-sound-recipes.js, rendered on demand into a buffer).
+ *
+ * Mixer: master -> { sfx bus, roll bus, music bus }, each with its own volume setting.
  */
 (function (BP) {
   'use strict';
 
-  let ctx = null, master, sfxBus, musicBus, noiseBuffer;
+  let ctx = null, master, sfxBus, musicBus, rollBus, noiseBuffer;
   let sfxOn = true, musicOn = true;
   let rollNodes = null;
+  const vol = { master: 0.8, roll: 0.8, sfx: 0.9, music: 0.6 };
+  let ballId = 'ruby';
+  const ballBuffers = new Map(); // skin id -> AudioBuffer (only the selected + previewed ones are kept)
+  let preview = null;            // { id, src, g, timer, onEnd }
   const music = { timer: null, nextTime: 0, step: 0 };
 
   function ensure() {
@@ -17,13 +24,43 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
-    sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? 1 : 0; sfxBus.connect(master);
-    musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? 0.55 : 0; musicBus.connect(master);
+    master = ctx.createGain(); master.connect(ctx.destination);
+    sfxBus = ctx.createGain(); sfxBus.connect(master);
+    musicBus = ctx.createGain(); musicBus.connect(master);
+    rollBus = ctx.createGain(); rollBus.connect(master);
+    applyVolumes();
     noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuffer.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return true;
+  }
+
+  function applyVolumes() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    master.gain.setTargetAtTime(0.9 * vol.master, t, 0.03);
+    sfxBus.gain.setTargetAtTime(sfxOn ? vol.sfx : 0, t, 0.03);
+    rollBus.gain.setTargetAtTime(sfxOn ? vol.roll : 0, t, 0.03);
+    musicBus.gain.setTargetAtTime(musicOn ? 0.55 * vol.music : 0, t, 0.03);
+  }
+
+  /** Rendered rolling loop for a skin (cached; rendering takes ~20 ms). */
+  function ballBuffer(id) {
+    let b = ballBuffers.get(id);
+    if (!b) {
+      const data = BP.BallSounds.render(id, 22050);
+      b = ctx.createBuffer(1, data.length, 22050);
+      b.getChannelData(0).set(data);
+      ballBuffers.set(id, b);
+    }
+    return b;
+  }
+
+  /** Drop buffers that are neither the selected ball nor the one being previewed. */
+  function releaseUnused() {
+    for (const id of Array.from(ballBuffers.keys())) {
+      if (id !== ballId && !(preview && preview.id === id)) ballBuffers.delete(id);
+    }
   }
 
   function tone({ freq, freqEnd, type = 'sine', at = 0, dur = 0.15, vol = 0.3, attack = 0.005, bus }) {
@@ -85,31 +122,80 @@
     drop() { tone({ freq: 500, freqEnd: 80, type: 'sine', dur: 0.45, vol: 0.2 }); },
   };
 
-  // Rolling: looped low-passed noise with a gentle wobble.
+  // Rolling: the selected ball's own seamless loop. One instance at a time, faded in/out,
+  // with loudness and pitch following the ball's speed (setRollIntensity).
+  const ROLL_FADE_IN = 0.12, ROLL_FADE_OUT = 0.15;
+
   function startRoll() {
-    if (!ensure() || rollNodes) return;
+    if (!ensure()) return;
+    if (rollNodes) stopRoll(true); // rapid re-rolls: never stack two rolling sounds
     const src = ctx.createBufferSource();
-    src.buffer = noiseBuffer; src.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 3;
-    const g = ctx.createGain(); g.gain.value = 0.0001;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 9;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.05;
-    lfo.connect(lfoGain); lfoGain.connect(g.gain);
-    src.connect(lp); lp.connect(g); g.connect(sfxBus);
-    g.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.1);
-    src.start(); lfo.start();
-    rollNodes = { src, g, lfo };
+    src.buffer = ballBuffer(ballId);
+    src.loop = true;
+    src.playbackRate.value = 0.85;
+    const g = ctx.createGain();
+    g.gain.value = 0.0001;
+    src.connect(g); g.connect(rollBus);
+    g.gain.setTargetAtTime(0.4, ctx.currentTime, ROLL_FADE_IN / 3);
+    src.start(0, Math.random() * src.buffer.duration);
+    rollNodes = { src, g, id: ballId };
   }
 
-  function stopRoll() {
+  /** k = 0..1 ball speed relative to its top speed. */
+  function setRollIntensity(k) {
     if (!rollNodes) return;
-    const { src, g, lfo } = rollNodes;
     const t = ctx.currentTime;
+    const kk = Math.max(0, Math.min(1, k));
+    rollNodes.g.gain.setTargetAtTime(0.35 + 0.65 * kk, t, 0.05);
+    rollNodes.src.playbackRate.setTargetAtTime(0.85 + 0.3 * kk, t, 0.05);
+  }
+
+  function stopRoll(quick) {
+    if (!rollNodes) return;
+    const { src, g } = rollNodes;
+    rollNodes = null;
+    const t = ctx.currentTime;
+    const fade = quick ? 0.04 : ROLL_FADE_OUT;
     g.gain.cancelScheduledValues(t);
     g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    src.stop(t + 0.15); lfo.stop(t + 0.15);
-    rollNodes = null;
+    g.gain.exponentialRampToValueAtTime(0.0001, t + fade);
+    src.stop(t + fade + 0.02);
+  }
+
+  // Ball Collection preview: a short sample of a ball's rolling sound. Only one at a time.
+  const PREVIEW_SECONDS = 1.8;
+
+  function stopPreview() {
+    if (!preview) return;
+    const p = preview;
+    preview = null;
+    clearTimeout(p.timer);
+    const t = ctx.currentTime;
+    p.g.gain.cancelScheduledValues(t);
+    p.g.gain.setValueAtTime(Math.max(p.g.gain.value, 0.0001), t);
+    p.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    p.src.stop(t + 0.12);
+    if (p.onEnd) p.onEnd(p.id);
+    releaseUnused();
+  }
+
+  function playPreview(id, onEnd) {
+    if (!ensure()) return false;
+    stopPreview();
+    const src = ctx.createBufferSource();
+    src.buffer = ballBuffer(id);
+    src.loop = true;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.9, t + 0.12);
+    g.gain.setValueAtTime(0.9, t + PREVIEW_SECONDS - 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + PREVIEW_SECONDS);
+    src.connect(g); g.connect(rollBus);
+    src.start();
+    src.stop(t + PREVIEW_SECONDS + 0.05);
+    preview = { id, src, g, onEnd, timer: setTimeout(() => { if (preview && preview.src === src) stopPreview(); }, PREVIEW_SECONDS * 1000) };
+    return true;
   }
 
   // Background music: I–vi–IV–V pads with a pentatonic pluck, scheduled ahead of time.
@@ -161,17 +247,37 @@
     },
     startRoll() { if (sfxOn) startRoll(); },
     stopRoll,
+    setRollIntensity,
+    /** Select the ball whose sound plays while rolling. */
+    setBall(id) {
+      ballId = id;
+      if (ctx) releaseUnused();
+    },
+    playPreview,
+    stopPreview,
+    get previewing() { return preview ? preview.id : null; },
+    /** Id of the ball whose rolling sound is playing (null when silent). */
+    get rolling() { return rollNodes ? rollNodes.id : null; },
     setSound(on) {
       sfxOn = on;
-      if (ctx) sfxBus.gain.value = on ? 1 : 0;
-      if (!on) stopRoll();
+      applyVolumes();
+      if (!on) { stopRoll(); stopPreview(); }
     },
     setMusic(on) {
       musicOn = on;
-      if (ctx) musicBus.gain.value = on ? 0.55 : 0;
+      applyVolumes();
       if (on && ctx) startMusic(); else stopMusic();
     },
-    suspend() { if (ctx && ctx.state === 'running') ctx.suspend(); },
+    /** Volumes 0..1: {master, roll, sfx, music}. */
+    setVolumes(v) {
+      Object.assign(vol, v);
+      applyVolumes();
+    },
+    suspend() {
+      stopRoll(true);
+      stopPreview();
+      if (ctx && ctx.state === 'running') ctx.suspend();
+    },
     resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); },
   };
 

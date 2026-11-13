@@ -6,6 +6,8 @@
     const save = BP.SaveManager.load();
     BP.AudioManager.setSound(save.settings.sound);
     BP.AudioManager.setMusic(save.settings.music);
+    BP.AudioManager.setVolumes(save.settings.volumes);
+    BP.AudioManager.setBall(BP.SaveManager.selectedBall().id);
     BP.Engine.init();
     BP.UI.init();
     BP.Engine.applySettings();

@@ -1,0 +1,81 @@
+/* Ball Path — ball skins (shared by the web game and, via mobile/scripts/convert-data.js,
+ * the native app).
+ *
+ * Each skin is pure data:
+ *   cost       stars needed to unlock (stars from all modes count)
+ *   body       radial gradient [highlight, mid, edge]
+ *   alpha      body opacity (crystal/diamond look slightly transparent)
+ *   halo       optional glow drawn behind the ball [color, size in ball radii]
+ *   bands      rolling stripes that sweep across the ball as it rolls [{color, width, count}]
+ *   dots       spots that roll around the ball [{color, n, r}]  (football patches, galaxy stars)
+ *   sweep      optional multicolour sweep that spins with the ball (rainbow)
+ *   twinkle    small sparkles that blink as the ball rolls [{color, n}]
+ *   spec       specular highlight strength (0..1)
+ * The sound with the same id lives in js/audio/ball-sound-recipes.js.
+ */
+(function (BP) {
+  'use strict';
+
+  const SKINS = [
+    // ---- Basic ----
+    { id: 'ruby', name: 'Ruby Red', collection: 'Basic', cost: 0, sound: 'Rich glass roll',
+      body: ['#ff9aa4', '#f23a55', '#8f0f2a'], bands: [{ color: 'rgba(255,240,200,0.75)', width: 0.16, count: 1 }], spec: 0.8 },
+    { id: 'black', name: 'Classic Black', collection: 'Basic', cost: 3, sound: 'Smooth marble roll',
+      body: ['#7a7f88', '#2a2d33', '#07080a'], bands: [{ color: 'rgba(255,255,255,0.35)', width: 0.12, count: 1 }], spec: 0.9 },
+    { id: 'pearl', name: 'Pearl White', collection: 'Basic', cost: 6, sound: 'Soft ceramic roll',
+      body: ['#ffffff', '#efe9e1', '#b8ad9f'], bands: [{ color: 'rgba(255,214,235,0.55)', width: 0.2, count: 1 }], spec: 0.7 },
+    { id: 'ocean', name: 'Ocean Blue', collection: 'Basic', cost: 9, sound: 'Gentle watery roll',
+      body: ['#a8e6ff', '#2a8fe0', '#0b3a7a'], bands: [{ color: 'rgba(220,250,255,0.6)', width: 0.14, count: 2 }], spec: 0.8 },
+    { id: 'emerald', name: 'Emerald Green', collection: 'Basic', cost: 12, sound: 'Natural stone roll',
+      body: ['#9cf0b8', '#1fae5b', '#0a5a2c'], dots: [{ color: 'rgba(5,60,30,0.35)', n: 5, r: 0.12 }], spec: 0.6 },
+    { id: 'golden', name: 'Golden Ball', collection: 'Basic', cost: 15, sound: 'Subtle metallic roll',
+      body: ['#fff4b8', '#f2b81f', '#8a5a00'], bands: [{ color: 'rgba(255,255,230,0.7)', width: 0.1, count: 2 }], spec: 1 },
+
+    // ---- Premium ----
+    { id: 'diamond', name: 'Diamond Ball', collection: 'Premium', cost: 20, sound: 'Delicate crystal ringing',
+      body: ['#ffffff', '#cfefff', '#7fb6d6'], alpha: 0.92, twinkle: [{ color: '#ffffff', n: 5 }],
+      bands: [{ color: 'rgba(255,255,255,0.5)', width: 0.08, count: 3 }], spec: 1 },
+    { id: 'neon', name: 'Neon Purple', collection: 'Premium', cost: 28, sound: 'Electronic hum',
+      body: ['#f2b8ff', '#a43cf0', '#3a0a6e'], halo: ['rgba(190,90,255,0.55)', 1.7],
+      bands: [{ color: 'rgba(120,255,255,0.8)', width: 0.08, count: 2 }], spec: 0.7 },
+    { id: 'fire', name: 'Fire Ball', collection: 'Premium', cost: 36, sound: 'Crackling fire roll',
+      body: ['#fff1a0', '#ff7a1a', '#a3170a'], halo: ['rgba(255,110,20,0.55)', 1.6],
+      dots: [{ color: 'rgba(255,230,120,0.7)', n: 6, r: 0.1 }], spec: 0.6 },
+    { id: 'ice', name: 'Ice Ball', collection: 'Premium', cost: 44, sound: 'Icy crystalline slide',
+      body: ['#ffffff', '#9fe3ff', '#3a8fc4'], halo: ['rgba(170,235,255,0.45)', 1.45],
+      twinkle: [{ color: '#ffffff', n: 4 }], bands: [{ color: 'rgba(255,255,255,0.55)', width: 0.1, count: 1 }], spec: 1 },
+    { id: 'rainbow', name: 'Rainbow Ball', collection: 'Premium', cost: 52, sound: 'Magical sparkling roll',
+      body: ['#ffffff', '#ff6fb1', '#6a3ad0'], sweep: ['#ff5d6c', '#ffb347', '#ffe66d', '#4cd99a', '#3fa7e0', '#9b6dff', '#ff5d6c'],
+      twinkle: [{ color: '#ffffff', n: 3 }], spec: 0.8 },
+    { id: 'galaxy', name: 'Galaxy Ball', collection: 'Premium', cost: 60, sound: 'Deep cosmic hum',
+      body: ['#7a5cff', '#2a1670', '#05031a'], halo: ['rgba(110,80,255,0.4)', 1.5],
+      dots: [{ color: '#ffffff', n: 8, r: 0.05 }, { color: 'rgba(255,140,230,0.8)', n: 4, r: 0.07 }], spec: 0.6 },
+
+    // ---- Special ----
+    { id: 'football', name: 'Football', collection: 'Special', cost: 70, sound: 'Rubber bounce & roll',
+      body: ['#ffffff', '#f1f1f1', '#9a9a9a'], dots: [{ color: '#1c1c1c', n: 5, r: 0.2 }], spec: 0.5 },
+    { id: 'basketball', name: 'Basketball', collection: 'Special', cost: 85, sound: 'Bouncy rubber roll',
+      body: ['#ffc38a', '#f07a1c', '#8a3a05'], bands: [{ color: 'rgba(40,15,0,0.85)', width: 0.05, count: 2 }], spec: 0.35 },
+    { id: 'crystal', name: 'Crystal Ball', collection: 'Special', cost: 100, sound: 'Gentle glass resonance',
+      body: ['#ffffff', '#d9e8ff', '#8fa9d9'], alpha: 0.78, halo: ['rgba(200,220,255,0.35)', 1.35],
+      twinkle: [{ color: '#ffffff', n: 3 }], spec: 1 },
+    { id: 'wooden', name: 'Wooden Ball', collection: 'Special', cost: 115, sound: 'Natural wooden roll',
+      body: ['#f6d197', '#c4803f', '#6f3f1d'], bands: [{ color: 'rgba(90,45,15,0.45)', width: 0.06, count: 3 }], spec: 0.35 },
+    { id: 'metallic', name: 'Metallic Ball', collection: 'Special', cost: 130, sound: 'Smooth metal roll',
+      body: ['#ffffff', '#b9c2cc', '#4a525b'], bands: [{ color: 'rgba(255,255,255,0.8)', width: 0.09, count: 2 }], spec: 1 },
+    { id: 'glow', name: 'Glow Ball', collection: 'Special', cost: 150, sound: 'Soft energy hum',
+      body: ['#f6ffd0', '#b6ff3a', '#3a8a00'], halo: ['rgba(190,255,80,0.6)', 1.8],
+      bands: [{ color: 'rgba(255,255,255,0.6)', width: 0.1, count: 1 }], spec: 0.7 },
+  ];
+
+  const BallSkins = {
+    SKINS,
+    DEFAULT: 'ruby',
+    COLLECTIONS: ['Basic', 'Premium', 'Special'],
+    get(id) { return SKINS.find((s) => s.id === id) || SKINS[0]; },
+    isUnlocked(skin, totalStars) { return totalStars >= skin.cost; },
+  };
+
+  BP.BallSkins = BallSkins;
+  if (typeof module !== 'undefined' && module.exports) module.exports = BallSkins;
+})(typeof window !== 'undefined' ? (window.BP = window.BP || {}) : (globalThis.BP = globalThis.BP || {}));

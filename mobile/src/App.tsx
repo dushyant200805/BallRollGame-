@@ -26,7 +26,7 @@ export default function App() {
       ]);
       setReady(true);
       // Sounds load in the background: the game never waits on (or breaks without) audio.
-      void AudioService.init(data.settings);
+      void AudioService.init(data.settings, Storage.selectedBall().id);
     })();
   }, []);
 

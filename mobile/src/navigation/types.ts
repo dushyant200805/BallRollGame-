@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Home: undefined;
   Levels: { mode: LevelMode };
   Game: { mode: LevelMode; number: number; resume?: boolean } | { mode: 'daily' };
+  Balls: undefined;
   Settings: undefined;
   About: undefined;
 };

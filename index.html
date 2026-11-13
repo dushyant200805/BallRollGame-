@@ -56,6 +56,7 @@
           <button class="btn btn-tile btn-daily" data-action="daily"><i class="bi bi-calendar2-heart-fill"></i><span>Daily</span><em class="badge" id="daily-badge" hidden>New</em></button>
           <button class="btn btn-tile btn-challenge" data-action="mode" data-mode="challenge"><i class="bi bi-lightning-charge-fill"></i><span>Challenge</span></button>
           <button class="btn btn-tile btn-time" data-action="mode" data-mode="timetrial"><i class="bi bi-stopwatch-fill"></i><span>Time Trial</span></button>
+          <button class="btn btn-tile btn-balls" data-action="balls"><canvas class="balls-icon" id="home-ball-icon" width="64" height="64" aria-hidden="true"></canvas><span>Ball Collection</span><em class="badge" id="balls-badge" hidden>New</em></button>
         </div>
 
         <div class="home-footer">
@@ -80,6 +81,17 @@
       </div>
       <p class="mode-desc" id="mode-desc"></p>
       <div class="level-scroll"><div id="level-grid"></div></div>
+    </section>
+
+    <!-- BALL COLLECTION -->
+    <section class="screen" id="screen-balls" aria-label="Ball collection">
+      <header class="topbar">
+        <button class="icon-btn" data-action="home" aria-label="Back to home"><i class="bi bi-chevron-left"></i></button>
+        <h2>Ball Collection</h2>
+        <div class="star-count" id="balls-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
+      </header>
+      <p class="mode-desc">Every ball looks and sounds different. Earn stars to unlock more, and tap <i class="bi bi-play-fill"></i> to hear one.</p>
+      <div class="level-scroll"><div id="ball-grid"></div></div>
     </section>
 
     <!-- GAME -->
@@ -169,6 +181,10 @@
           <label class="setting"><span><i class="bi bi-volume-up-fill"></i>Sound effects</span><input type="checkbox" data-setting="sound"><i class="switch"></i></label>
           <label class="setting"><span><i class="bi bi-music-note-beamed"></i>Music</span><input type="checkbox" data-setting="music"><i class="switch"></i></label>
           <label class="setting"><span><i class="bi bi-phone-vibrate-fill"></i>Vibration</span><input type="checkbox" data-setting="vibration"><i class="switch"></i></label>
+          <div class="volume-row"><label for="vol-master"><i class="bi bi-speaker-fill"></i>Master volume</label><input type="range" id="vol-master" min="0" max="100" step="1" data-volume="master"><output data-volume-out="master"></output></div>
+          <div class="volume-row"><label for="vol-roll"><i class="bi bi-circle-fill"></i>Ball rolling</label><input type="range" id="vol-roll" min="0" max="100" step="1" data-volume="roll"><output data-volume-out="roll"></output></div>
+          <div class="volume-row"><label for="vol-sfx"><i class="bi bi-bell-fill"></i>Sound effects</label><input type="range" id="vol-sfx" min="0" max="100" step="1" data-volume="sfx"><output data-volume-out="sfx"></output></div>
+          <div class="volume-row"><label for="vol-music"><i class="bi bi-music-note-beamed"></i>Music</label><input type="range" id="vol-music" min="0" max="100" step="1" data-volume="music"><output data-volume-out="music"></output></div>
           <div class="setting">
             <span><i class="bi bi-stars"></i>Animations</span>
             <div class="seg" role="radiogroup" aria-label="Animations">
@@ -213,12 +229,15 @@
   <script src="js/core/session.js"></script>
   <!-- Level data (kept separate from logic) -->
   <script src="js/data/levels.js"></script>
+  <script src="js/data/ball-skins.js"></script>
+  <script src="js/audio/ball-sound-recipes.js"></script>
   <!-- Game systems -->
   <script src="js/game/level-manager.js"></script>
   <script src="js/game/save-manager.js"></script>
   <script src="js/game/audio-manager.js"></script>
   <script src="js/game/geometry.js"></script>
   <script src="js/game/fx.js"></script>
+  <script src="js/game/ball-painter.js"></script>
   <script src="js/game/renderer.js"></script>
   <script src="js/game/ball-controller.js"></script>
   <script src="js/game/input-controller.js"></script>

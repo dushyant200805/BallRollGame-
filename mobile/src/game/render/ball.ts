@@ -2,12 +2,15 @@
  * into the goal on success, or dropping/bumping at the break on failure.
  * Port of js/game/ball-controller.js.
  */
-import { ClipOp, Skia, type SkCanvas } from '@shopify/react-native-skia';
+import type { SkCanvas } from '@shopify/react-native-skia';
 import { TILE, dirByBit } from '../core/constants';
 import type { GameSession } from '../core/session';
 import type { FailReason, PathStep, TraceResult } from '../core/pathfinding';
 import { segmentLength, segmentPoint } from './geometry';
-import { fillPaint, radial2 } from './skiaKit';
+import { drawBall } from './ballPainter';
+import { BALL_SKINS, DEFAULT_BALL, type BallSkin } from '../data/ballSkins';
+
+const DEFAULT_SKIN = BALL_SKINS.find((b) => b.id === DEFAULT_BALL) || BALL_SKINS[0];
 
 const RADIUS = 0.17; // in cell units
 
@@ -31,6 +34,7 @@ interface Layout {
 
 export class BallController {
   session: GameSession | null = null;
+  skin: BallSkin | null = null; // set by the engine from the player's selection
   mode: Mode = 'idle';
   dist = 0;
   rot = 0;
@@ -62,6 +66,12 @@ export class BallController {
 
   get animating() {
     return this.mode !== 'idle' && this.mode !== 'done';
+  }
+
+  /** Rolling speed relative to top speed (0..1), drives the rolling sound's intensity. */
+  get intensity() {
+    if (this.mode !== 'rolling') return 0;
+    return Math.min(1, this.speed / (this.reduced ? 12 : 6));
   }
 
   roll(traceResult: TraceResult, cb: RollCallbacks, reduced: boolean) {
@@ -184,44 +194,7 @@ export class BallController {
       }
     }
 
-    const rad = s * RADIUS * scale;
-    if (rad <= 0.5 || alpha <= 0.02) return;
-    const layer = Skia.Paint();
-    layer.setAlphaf(alpha);
-    c.saveLayer(layer);
-    // shadow
-    c.drawOval(Skia.XYWHRect(x + rad * 0.15 - rad * 0.95, y + rad * 0.55 - rad * 0.5, rad * 1.9, rad), fillPaint('rgba(0,0,0,0.35)'));
-    // body
-    const body = fillPaint(null);
-    body.setShader(radial2(x - rad * 0.35, y - rad * 0.4, rad * 0.1, x, y, rad, ['#ff9aa4', '#f23a55', '#8f0f2a'], [0, 0.45, 1]));
-    c.drawCircle(x, y, rad, body);
-    // rolling stripe: a band that sweeps across the ball along the heading
-    c.save();
-    const clip = Skia.Path.Make();
-    clip.addCircle(x, y, rad);
-    c.clipPath(clip, ClipOp.Intersect, true);
-    const heading = (Math.atan2(hy, hx) * 180) / Math.PI;
-    for (const k of [0, Math.PI]) {
-      const ph = this.rot + k;
-      const vis = Math.sin(ph);
-      if (vis <= 0) continue;
-      const along = Math.cos(ph) * rad * 0.8;
-      c.save();
-      c.translate(x + hx * along, y + hy * along);
-      c.rotate(heading, 0, 0);
-      const ew = rad * 0.16 * vis + 0.5;
-      const eh = rad * 0.95;
-      c.drawOval(Skia.XYWHRect(-ew, -eh, ew * 2, eh * 2), fillPaint(`rgba(255,240,200,${0.75 * vis})`));
-      c.restore();
-    }
-    c.restore();
-    // specular highlight
-    c.save();
-    c.translate(x - rad * 0.38, y - rad * 0.42);
-    c.rotate((-0.6 * 180) / Math.PI, 0, 0);
-    c.drawOval(Skia.XYWHRect(-rad * 0.26, -rad * 0.16, rad * 0.52, rad * 0.32), fillPaint('rgba(255,255,255,0.8)'));
-    c.restore();
-    c.restore(); // layer
+    drawBall(c, this.skin || DEFAULT_SKIN, x, y, s * RADIUS * scale, this.rot, hx, hy, alpha);
   }
 
   /** Current ball position in board pixels (for particle effects). */

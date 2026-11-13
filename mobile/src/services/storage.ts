@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameMode, LevelMode } from '../game/core/constants';
 import type { Snapshot } from '../game/core/session';
 import type { DailyCache } from '../game/levelManager';
+import { BALL_SKINS, DEFAULT_BALL, type BallSkin } from '../game/data/ballSkins';
 
 const KEY = 'ballroll.save.v1';
 const LEVEL_SETS = 2;
@@ -16,11 +17,19 @@ export interface LevelResult {
   bestTime: number;
 }
 
+export interface Volumes {
+  master: number; // 0..1
+  roll: number;
+  sfx: number;
+  music: number;
+}
+
 export interface Settings {
   sound: boolean;
   music: boolean;
   vibration: boolean;
   animations: 'full' | 'reduced';
+  volumes: Volumes;
 }
 
 export interface CurrentGame {
@@ -39,12 +48,20 @@ export interface SaveData {
   daily: { results: Record<string, LevelResult>; cache: DailyCache | null; streak: number; lastDone: string | null };
   current: CurrentGame | null;
   lastMode: GameMode;
+  ball: string; // selected ball skin id
+  ballsSeen: number; // unlocked-ball count when the collection was last opened ("New" badge)
 }
 
 const defaults = (): SaveData => ({
   version: 1,
   levelSets: LEVEL_SETS,
-  settings: { sound: true, music: true, vibration: true, animations: 'full' },
+  settings: {
+    sound: true,
+    music: true,
+    vibration: true,
+    animations: 'full',
+    volumes: { master: 0.8, roll: 0.8, sfx: 0.9, music: 0.6 },
+  },
   progress: {
     classic: { unlocked: 1, levels: {} },
     challenge: { unlocked: 1, levels: {} },
@@ -53,6 +70,8 @@ const defaults = (): SaveData => ({
   daily: { results: {}, cache: null, streak: 0, lastDone: null },
   current: null,
   lastMode: 'classic',
+  ball: DEFAULT_BALL,
+  ballsSeen: 1,
 });
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -144,6 +163,42 @@ export const Storage = {
 
   levelResult(mode: LevelMode, n: number): LevelResult | null {
     return data.progress[mode].levels[n] || null;
+  },
+
+  /** Stars across every mode (unlocks ball skins). */
+  allStars(): number {
+    return MODE_IDS.reduce((sum, m) => sum + Storage.totalStars(m), 0);
+  },
+
+  setVolume(name: keyof Volumes, value: number): void {
+    data.settings.volumes[name] = Math.max(0, Math.min(1, value));
+    Storage.persist();
+  },
+
+  isBallUnlocked(skin: BallSkin): boolean {
+    return Storage.allStars() >= skin.cost;
+  },
+
+  unlockedBallCount(): number {
+    const stars = Storage.allStars();
+    return BALL_SKINS.filter((s) => stars >= s.cost).length;
+  },
+
+  /** Selected ball; falls back to the default if it is no longer unlocked (e.g. after a reset). */
+  selectedBall(): BallSkin {
+    const skin = BALL_SKINS.find((s) => s.id === data.ball);
+    if (skin && Storage.isBallUnlocked(skin)) return skin;
+    return BALL_SKINS.find((s) => s.id === DEFAULT_BALL) || BALL_SKINS[0];
+  },
+
+  setBall(id: string): void {
+    data.ball = id;
+    Storage.persist();
+  },
+
+  markBallsSeen(): void {
+    data.ballsSeen = Storage.unlockedBallCount();
+    Storage.persist();
   },
 
   totalStars(mode: LevelMode): number {

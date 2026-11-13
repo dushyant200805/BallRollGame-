@@ -10,7 +10,12 @@
   const defaults = () => ({
     version: 1,
     levelSets: LEVEL_SETS,
-    settings: { sound: true, music: true, vibration: true, animations: 'full' }, // 'full' | 'reduced'
+    settings: {
+      sound: true, music: true, vibration: true, animations: 'full', // 'full' | 'reduced'
+      volumes: { master: 0.8, roll: 0.8, sfx: 0.9, music: 0.6 },   // 0..1
+    },
+    ball: 'ruby', // selected ball skin (js/data/ball-skins.js)
+    ballsSeen: 1, // unlocked-ball count when the collection was last opened (drives the "New" badge)
     progress: {
       classic: { unlocked: 1, levels: {} },   // levels[n] = {stars, bestMoves, bestTime}
       challenge: { unlocked: 1, levels: {} },
@@ -79,6 +84,25 @@
     },
 
     levelResult(mode, n) { return data.progress[mode].levels[n] || null; },
+
+    /** Stars across every mode (unlocks ball skins). */
+    allStars() { return MODE_IDS.reduce((sum, m) => sum + SaveManager.totalStars(m), 0); },
+
+    setVolume(name, value) {
+      data.settings.volumes[name] = Math.max(0, Math.min(1, value));
+      SaveManager.persist();
+    },
+
+    /** Selected ball skin; falls back to the default if it is no longer unlocked (e.g. after a reset). */
+    selectedBall() {
+      const skin = BP.BallSkins.get(data.ball);
+      return BP.BallSkins.isUnlocked(skin, SaveManager.allStars()) ? skin : BP.BallSkins.get(BP.BallSkins.DEFAULT);
+    },
+
+    setBall(id) {
+      data.ball = id;
+      SaveManager.persist();
+    },
 
     totalStars(mode) {
       return Object.values(data.progress[mode].levels).reduce((s, r) => s + (r.stars || 0), 0);

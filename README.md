@@ -9,7 +9,33 @@ Pure HTML5 + CSS3 + vanilla JavaScript (ES6+) on Canvas, with no build step.
 - **Icons:** [Bootstrap Icons](https://icons.getbootstrap.com/) 1.11.3, loaded from the
   jsDelivr CDN.
 - **Audio:** all sounds and music are synthesized live with the Web Audio API, so there
-  are no audio files.
+  are no audio files. That includes a unique rolling sound for each of the 18 balls.
+
+## Ball Collection
+
+There are 18 ball skins in three collections:
+- **Basic:** Ruby Red, Classic Black, Pearl White, Ocean Blue, Emerald Green, Golden
+- **Premium:** Diamond, Neon Purple, Fire, Ice, Rainbow, Galaxy
+- **Special:** Football, Basketball, Crystal, Wooden, Metallic, Glow
+
+Each ball unlocks with stars earned in any mode, from 0 to 150 stars.
+
+Every ball has its own look and its own rolling sound: marble, ceramic, water, glass, stone,
+metal, crystal ringing, an electronic hum, fire crackle, ice, sparkles, a cosmic hum, rubber
+bounces, glass resonance, wood, steel and an energy hum.
+
+- **Rolling sound:** it fades in when the ball starts and gets louder and slightly higher as
+  the ball speeds up. It fades out the moment the ball stops, and two rolling sounds never
+  overlap.
+- **Preview:** the ▶ button on each ball plays a short sample, including for locked balls.
+  Only one preview plays at a time.
+- **Volume:** Settings has Master, Ball rolling, Sound effects and Music volume sliders, plus
+  sound, music and vibration switches. All of them are saved.
+
+The ball data lives in `js/data/ball-skins.js` and the sound recipes in
+`js/audio/ball-sound-recipes.js`. The sounds are original synthesis, with no third-party
+audio. The browser renders each sound on demand (about 20 ms) and keeps only the selected and
+previewed balls in memory.
 
 > **Native mobile app:** [`mobile/`](mobile/) contains **Ball Roll**, the installable
 > Android/iOS version, built with React Native + Expo + Skia. It has the same levels and
@@ -78,6 +104,8 @@ js/core/                DOM-free game logic (also runs in Node for tests)
   generator.js          level generator (scramble-by-legal-moves = always solvable)
   session.js            one level attempt: moves, undo, timer, win/lose rules
 js/data/levels.js       level data (generated; kept separate from logic)
+js/data/ball-skins.js   18 ball skins: look, unlock cost (shared with the mobile app)
+js/audio/ball-sound-recipes.js  per-ball rolling sounds, synthesized (shared with mobile)
 js/game/
   level-manager.js      tiers, mode rules, daily puzzle
   save-manager.js       LocalStorage persistence
@@ -87,6 +115,7 @@ js/game/
   ball-controller.js    ball rolling, spin, sink/drop animations
   input-controller.js   pointer (mouse/touch/pen) drag & tap
   fx.js                 particles (confetti, sparkles)
+  ball-painter.js       draws a ball skin (board and collection)
   engine.js             game engine: ties everything together, frame loop
 js/ui/ui-manager.js     screens, HUD, level grid, settings, dialogs
 js/main.js              bootstrap

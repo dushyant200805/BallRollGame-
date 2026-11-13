@@ -299,3 +299,35 @@ body.reduced *, body.reduced *::before, body.reduced *::after { animation-durati
 @media (prefers-reduced-motion: reduce) {
   .logo-ball, .win-burst, .level-btn.current, .ctrl-play.ready { animation: none; }
 }
+
+/* ---- Ball collection ---- */
+.home-grid .btn-balls { grid-column: 1 / -1; flex-direction: row; gap: 12px; min-height: 64px; background: linear-gradient(#ffb36b, #f08a2c); box-shadow: 0 5px 0 #b45e14, 0 9px 18px rgba(0,0,0,.25); }
+.home-grid .btn-balls:active { box-shadow: 0 1px 0 #b45e14; }
+.balls-icon { width: 36px; height: 36px; }
+#ball-grid { display: flex; flex-direction: column; gap: 18px; padding-bottom: 8px; }
+.ball-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ball-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 10px 10px; border-radius: 20px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.08); }
+.ball-card.selected { border-color: var(--gold); background: rgba(255,204,51,.12); }
+.ball-card.locked canvas { filter: grayscale(.85) brightness(.7); }
+.ball-card canvas { width: 76px; height: 76px; }
+.ball-card h3 { margin: 2px 0 0; font-size: 16px; text-align: center; }
+.ball-card .ball-sound { font-size: 12.5px; color: var(--ink-dim); text-align: center; min-height: 2.4em; }
+.ball-card .ball-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+.ball-card .use-btn { flex: 1; min-height: 40px; border-radius: 14px; font-weight: 700; font-size: 15px; color: var(--panel-ink); background: var(--panel); box-shadow: 0 3px 0 #d7b98f; }
+.ball-card .use-btn[disabled] { opacity: 1; color: var(--ink-dim); background: rgba(0,0,0,.25); box-shadow: none; }
+.ball-card.selected .use-btn { background: var(--gold); box-shadow: 0 3px 0 var(--gold-dark); }
+.ball-card .preview-btn { width: 40px; min-height: 40px; border-radius: 14px; font-size: 18px; color: #fff; background: var(--teal); box-shadow: 0 3px 0 var(--teal-dark); flex: none; }
+.ball-card .preview-btn.playing { background: var(--coral); box-shadow: 0 3px 0 var(--coral-dark); animation: preview-pulse .6s ease-in-out infinite alternate; }
+@keyframes preview-pulse { to { transform: scale(1.08); } }
+.ball-card .lock-tag { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.45); font-size: 12px; font-weight: 700; }
+.ball-card .lock-tag .bi-star-fill { color: var(--gold); }
+body.reduced .ball-card .preview-btn.playing { animation: none; }
+
+/* ---- volume sliders ---- */
+.volume-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label out" "range range"; align-items: center; gap: 4px 10px; padding: 8px 14px 10px; background: #f3e2c6; border-radius: 16px; font-size: 16px; font-weight: 500; }
+.volume-row label { grid-area: label; display: inline-flex; align-items: center; gap: 10px; }
+.volume-row label .bi { font-size: 18px; color: var(--panel-dim); }
+.volume-row output { grid-area: out; font-weight: 700; color: var(--panel-dim); min-width: 3ch; text-align: right; }
+.volume-row input[type=range] { grid-area: range; width: 100%; accent-color: var(--teal); height: 28px; cursor: pointer; }
+#overlay-settings .panel { max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.ball-card.selected .use-btn[disabled] { color: #4a3200; background: var(--gold); box-shadow: 0 3px 0 var(--gold-dark); }

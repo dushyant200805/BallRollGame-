@@ -28,6 +28,21 @@
       $$('[data-setting]').forEach((input) => {
         input.addEventListener('change', () => UI.setSetting(input.dataset.setting, input.checked));
       });
+      $$('[data-volume]').forEach((input) => {
+        const name = input.dataset.volume;
+        input.addEventListener('input', () => {
+          const v = input.value / 100;
+          SaveManager.setVolume(name, v);
+          AudioManager.setVolumes({ [name]: v });
+          UI.syncVolumeLabel(name);
+        });
+        // a short sample when the slider is released, so the level can be judged
+        input.addEventListener('change', () => {
+          AudioManager.unlock();
+          if (name === 'roll') AudioManager.playPreview(SaveManager.selectedBall().id);
+          else if (name !== 'music') AudioManager.play('connect');
+        });
+      });
       // Close overlays with Escape / pause with P or Escape in game.
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -49,7 +64,7 @@
 
     handle(action, el) {
       AudioManager.unlock();
-      const quiet = ['undo', 'restart', 'roll', 'hint', 'toggle-sound'];
+      const quiet = ['undo', 'restart', 'roll', 'hint', 'toggle-sound', 'ball-preview'];
       if (!quiet.includes(action)) AudioManager.play('click');
       const E = BP.Engine;
       switch (action) {
@@ -59,6 +74,9 @@
         case 'daily': E.startDaily(); break;
         case 'home': UI.showScreen('home'); break;
         case 'tab': UI.renderLevels(el.dataset.mode); break;
+        case 'balls': UI.showScreen('balls'); break;
+        case 'ball-preview': UI.toggleBallPreview(el.dataset.ball); break;
+        case 'ball-use': UI.useBall(el.dataset.ball); break;
         case 'level': E.startLevel(el.dataset.mode, +el.dataset.n); break;
         case 'settings': UI.openSettings(); break;
         case 'close-settings': UI.closeSettings(); break;
@@ -95,9 +113,100 @@
 
     // ---- screens ------------------------------------------------------------
     showScreen(name) {
+      if (UI.currentScreen === 'balls' && name !== 'balls') AudioManager.stopPreview();
       UI.currentScreen = name;
       $$('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
       if (name === 'home') UI.renderHome();
+      if (name === 'balls') UI.renderBalls();
+    },
+
+    // ---- ball collection ---------------------------------------------------------
+    /** Draw a skin into a canvas (CSS size `css` px), crisp on high-DPI screens. */
+    paintBall(canvas, skin, css, rot = 0.6) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      canvas.width = Math.round(css * dpr);
+      canvas.height = Math.round(css * dpr);
+      const c = canvas.getContext('2d');
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, css, css);
+      // same ball size for every skin; glow halos simply extend around it
+      BP.BallPainter.drawBall(c, skin, css / 2, css / 2 - css * 0.04, css * 0.33, rot, 1, 0, 1);
+    },
+
+    unlockedBallCount() {
+      const stars = SaveManager.allStars();
+      return BP.BallSkins.SKINS.filter((s) => BP.BallSkins.isUnlocked(s, stars)).length;
+    },
+
+    renderBalls() {
+      const stars = SaveManager.allStars();
+      const selected = SaveManager.selectedBall().id;
+      $('#balls-stars span').textContent = stars;
+      SaveManager.data.ballsSeen = UI.unlockedBallCount();
+      SaveManager.persist();
+      const grid = $('#ball-grid');
+      grid.innerHTML = '';
+      const playing = AudioManager.previewing;
+      BP.BallSkins.COLLECTIONS.forEach((col) => {
+        const head = document.createElement('div');
+        head.className = 'tier-head';
+        head.style.setProperty('--tier', col === 'Basic' ? '#4cc38a' : col === 'Premium' ? '#a35ee0' : '#f0a83a');
+        head.innerHTML = col + ' <small>Collection</small>';
+        grid.appendChild(head);
+        const cards = document.createElement('div');
+        cards.className = 'ball-cards';
+        BP.BallSkins.SKINS.filter((s) => s.collection === col).forEach((skin) => {
+          const unlocked = BP.BallSkins.isUnlocked(skin, stars);
+          const isSel = skin.id === selected;
+          const isPlaying = playing === skin.id;
+          const card = document.createElement('div');
+          card.className = 'ball-card' + (unlocked ? '' : ' locked') + (isSel ? ' selected' : '');
+          const lock = unlocked ? '' :
+            '<span class="lock-tag"><i class="bi bi-lock-fill"></i>' + skin.cost + '<i class="bi bi-star-fill"></i></span>';
+          const useLabel = unlocked ? (isSel ? skin.name + ' selected' : 'Use ' + skin.name)
+            : skin.name + ', locked, needs ' + skin.cost + ' stars';
+          const useText = isSel ? '<i class="bi bi-check-lg"></i> In use' : unlocked ? 'Use' : 'Need ' + (skin.cost - stars) + ' \u2605';
+          card.innerHTML = lock +
+            '<canvas aria-hidden="true"></canvas>' +
+            '<h3>' + skin.name + '</h3>' +
+            '<div class="ball-sound">' + skin.sound + '</div>' +
+            '<div class="ball-actions">' +
+              '<button class="use-btn" data-action="ball-use" data-ball="' + skin.id + '"' + (unlocked && !isSel ? '' : ' disabled') +
+                ' aria-label="' + useLabel + '">' + useText + '</button>' +
+              '<button class="preview-btn' + (isPlaying ? ' playing' : '') + '" data-action="ball-preview" data-ball="' + skin.id + '"' +
+                ' aria-label="Preview ' + skin.name + ' sound" aria-pressed="' + isPlaying + '">' +
+                '<i class="bi ' + (isPlaying ? 'bi-stop-fill' : 'bi-play-fill') + '"></i></button>' +
+            '</div>';
+          cards.appendChild(card);
+          UI.paintBall(card.querySelector('canvas'), skin, 76);
+        });
+        grid.appendChild(cards);
+      });
+    },
+
+    setPreviewButton(id, playing) {
+      const btn = document.querySelector('.preview-btn[data-ball="' + id + '"]');
+      if (!btn) return;
+      btn.classList.toggle('playing', playing);
+      btn.setAttribute('aria-pressed', String(playing));
+      btn.querySelector('.bi').className = 'bi ' + (playing ? 'bi-stop-fill' : 'bi-play-fill');
+    },
+
+    toggleBallPreview(id) {
+      if (AudioManager.previewing === id) { AudioManager.stopPreview(); return; }
+      if (!SaveManager.settings.sound) { UI.toast('Sound effects are off. Turn them on in Settings to hear previews.'); return; }
+      const ok = AudioManager.playPreview(id, (endedId) => UI.setPreviewButton(endedId, false));
+      if (ok) UI.setPreviewButton(id, true);
+      else UI.toast('Sound is unavailable in this browser.');
+    },
+
+    useBall(id) {
+      const skin = BP.BallSkins.get(id);
+      if (!BP.BallSkins.isUnlocked(skin, SaveManager.allStars())) return;
+      SaveManager.setBall(id);
+      BP.Engine.applyBall();
+      UI.renderBalls();
+      UI.toast(skin.name + ' selected');
     },
 
     playContinue() {
@@ -123,6 +232,8 @@
       $('#home-play-sub').textContent = cur && cur.mode === 'classic' ? `Continue level ${n}` : allDone ? 'All levels complete!' : `Level ${n}`;
       const total = SaveManager.MODE_IDS.reduce((s, m) => s + SaveManager.totalStars(m), 0);
       $('#home-stars span').textContent = total;
+      UI.paintBall($('#home-ball-icon'), SaveManager.selectedBall(), 36);
+      $('#balls-badge').hidden = UI.unlockedBallCount() <= (SaveManager.data.ballsSeen || 1);
       const badge = $('#daily-badge');
       const done = SaveManager.dailyResult(LevelManager.dailyKey());
       badge.hidden = false;
@@ -294,9 +405,18 @@
       settingsReturn = null;
     },
 
+    syncVolumeLabel(name) {
+      const out = document.querySelector('[data-volume-out="' + name + '"]');
+      if (out) out.textContent = Math.round(SaveManager.settings.volumes[name] * 100) + '%';
+    },
+
     syncSettings() {
       const s = SaveManager.settings;
       $$('[data-setting]').forEach((i) => { i.checked = !!s[i.dataset.setting]; });
+      $$('[data-volume]').forEach((i) => {
+        i.value = Math.round(s.volumes[i.dataset.volume] * 100);
+        UI.syncVolumeLabel(i.dataset.volume);
+      });
       $$('[data-action="set-anim"]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === s.animations)));
     },
 

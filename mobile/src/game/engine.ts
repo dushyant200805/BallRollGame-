@@ -188,6 +188,15 @@ export class GameEngine {
 
   applySettings() {
     this.renderer.reduced = Storage.settings.animations === 'reduced';
+    this.applyBall();
+    this.renderer.dirty = true;
+  }
+
+  /** Use the selected ball skin for drawing and for the rolling sound. */
+  applyBall() {
+    const skin = Storage.selectedBall();
+    this.ball.skin = skin;
+    AudioService.setBall(skin.id);
     this.renderer.dirty = true;
   }
 
@@ -577,6 +586,7 @@ export class GameEngine {
     }
     this.renderer.update(dt);
     this.ball.update(dt);
+    if (this.ball.mode === 'rolling') AudioService.setRollIntensity(this.ball.intensity);
     if (this.renderer.needsFrame()) {
       const pic = this.renderer.render(now);
       if (pic) this.picture.value = pic;
