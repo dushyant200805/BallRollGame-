@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220"><!-- PLACEHOLDER poster -->
+<defs><linearGradient id="p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb36b"/><stop offset="1" stop-color="#e8445a"/></linearGradient></defs>
+<rect width="600" height="220" rx="28" fill="url(#p)"/>
+<g fill="#fff" opacity=".14"><circle cx="540" cy="190" r="80"/><circle cx="40" cy="20" r="50"/></g>
+<path transform="translate(470 112)" d="M0-70l20 42 46 6-34 32 9 46L0 34l-41 22 9-46-34-32 46-6z" fill="#ffcc33" stroke="#a87800" stroke-width="4"/>
+<text x="470" y="128" font-family="Arial Black,Arial" font-weight="900" font-size="30" text-anchor="middle" fill="#7a5600">10</text>
+<text x="36" y="92" font-family="Fredoka,Arial Rounded MT Bold,Arial" font-weight="700" font-size="46" fill="#fff">Milestone Gift</text>
+<text x="38" y="134" font-family="Fredoka,Arial" font-weight="600" font-size="24" fill="#fff" opacity=".9">Clear 10 levels, open a gift</text>
+<text x="38" y="192" font-family="Arial" font-size="14" fill="#fff" opacity=".55">placeholder poster</text></svg>

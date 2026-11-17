@@ -15,6 +15,9 @@
   let confirmResolve = null;
   let levelsMode = 'classic';
   let settingsReturn = null;
+  let adResolve = null;
+  let adTimer = null;
+  let rewardShown = null; // history entry shown in the reward dialog
 
   const UI = {
     currentScreen: 'home',
@@ -47,6 +50,8 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           if ($('#overlay-confirm').classList.contains('open')) UI.resolveConfirm(false);
+          else if ($('#overlay-ad').classList.contains('open')) UI.closeAd(false);
+          else if ($('#overlay-reward').classList.contains('open')) { if (!$('#btn-reward-close').disabled) UI.closeReward(); }
           else if ($('#overlay-settings').classList.contains('open')) UI.closeSettings();
           else if ($('#overlay-pause').classList.contains('open')) BP.Engine.resume();
           else if (UI.currentScreen === 'game' && !UI.overlayOpen()) BP.Engine.pause();
@@ -77,6 +82,17 @@
         case 'balls': UI.showScreen('balls'); break;
         case 'ball-preview': UI.toggleBallPreview(el.dataset.ball); break;
         case 'ball-use': UI.useBall(el.dataset.ball); break;
+        case 'gifts': UI.showScreen('gifts'); break;
+        case 'open-daily': UI.openDailyGift(); break;
+        case 'open-milestone': UI.openMilestoneGift(); break;
+        case 'win-gift': UI.openMilestoneGift(); break;
+        case 'reward-close': UI.closeReward(); break;
+        case 'reward-use': UI.useReward(); break;
+        case 'ad-close': UI.closeAd(false); break;
+        case 'ad-claim': UI.closeAd(true); break;
+        case 'theme-use': UI.useTheme(el.dataset.theme); break;
+        case 'sound-use': UI.useSound(el.dataset.sound); break;
+        case 'use-moves': E.useExtraMoves(); break;
         case 'level': E.startLevel(el.dataset.mode, +el.dataset.n); break;
         case 'settings': UI.openSettings(); break;
         case 'close-settings': UI.closeSettings(); break;
@@ -84,7 +100,7 @@
         case 'toggle-music': UI.setSetting('music', !SaveManager.settings.music); break;
         case 'set-anim': UI.setSetting('animations', el.dataset.value); break;
         case 'reset-progress':
-          UI.confirm('Reset all progress?', 'Stars, unlocked levels and best scores will be erased. Settings are kept.', 'Reset').then((yes) => {
+          UI.confirm('Reset all progress?', 'Stars, unlocked levels, best scores, coins and gift rewards will be erased. Settings are kept.', 'Reset').then((yes) => {
             if (!yes) return;
             SaveManager.resetProgress();
             UI.toast('Progress reset');
@@ -113,11 +129,241 @@
 
     // ---- screens ------------------------------------------------------------
     showScreen(name) {
-      if (UI.currentScreen === 'balls' && name !== 'balls') AudioManager.stopPreview();
+      if ((UI.currentScreen === 'balls' || UI.currentScreen === 'gifts') && name !== UI.currentScreen) AudioManager.stopPreview();
       UI.currentScreen = name;
       $$('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
       if (name === 'home') UI.renderHome();
       if (name === 'balls') UI.renderBalls();
+      if (name === 'gifts') UI.renderGifts();
+    },
+
+    // ---- gifts & rewards ---------------------------------------------------------
+    renderGifts() {
+      const RM = BP.RewardManager;
+      const coins = RM.coins;
+      $('#gifts-coins span').textContent = coins;
+      $('#wallet-coins').textContent = coins;
+      $('#wallet-moves').textContent = RM.extraMoves;
+
+      // daily gift
+      const next = RM.dailyNext();
+      const btn = $('#btn-open-daily');
+      btn.disabled = RM.busy;
+      btn.removeAttribute('aria-label');
+      btn.classList.toggle('btn-gold', next.kind === 'coins');
+      if (next.kind === 'ad') {
+        btn.innerHTML = '<i class="bi bi-play-btn-fill"></i>Watch ad to open';
+        $('#daily-gift-desc').textContent = "Today's first gift is free: watch a short ad to open it.";
+      } else if (next.kind === 'coins') {
+        btn.innerHTML = 'Open for <img class="btn-coin" src="' + RM.artUrl('coins') + '" alt="">' + next.cost;
+        btn.setAttribute('aria-label', 'Open another gift for ' + next.cost + ' coins');
+        $('#daily-gift-desc').textContent = 'Want more? Open another gift with coins. The price doubles with each gift and resets tomorrow.';
+      } else {
+        btn.textContent = 'Come back tomorrow';
+        btn.disabled = true;
+        $('#daily-gift-desc').textContent = "You've opened every gift for today.";
+      }
+      $('#daily-gift-meta').textContent = 'Opened today: ' + next.opened +
+        (next.kind === 'coins' && coins < next.cost ? ' \u00b7 You need ' + (next.cost - coins) + ' more coins' : '');
+
+      // milestone gift
+      const m = RM.milestone();
+      const fill = m.available ? 1 : m.progress / m.every;
+      $('#milestone-fill').style.width = Math.round(fill * 100) + '%';
+      $('#milestone-text').textContent = m.available
+        ? m.available + ' gift' + (m.available > 1 ? 's' : '') + ' ready!'
+        : m.progress + ' / ' + m.every + ' levels';
+      const bar = $('#milestone-bar');
+      bar.setAttribute('aria-valuemax', String(m.every));
+      bar.setAttribute('aria-valuenow', String(m.available ? m.every : m.progress));
+      const mb = $('#btn-open-milestone');
+      const left = m.every - m.progress;
+      mb.disabled = !m.available || RM.busy;
+      mb.innerHTML = m.available ? '<i class="bi bi-gift-fill"></i>Open milestone gift'
+        : '<i class="bi bi-lock-fill"></i>Clear ' + left + ' more level' + (left > 1 ? 's' : '');
+
+      // themes
+      const themeGrid = $('#theme-grid');
+      themeGrid.innerHTML = '';
+      const current = RM.theme().id;
+      RM.cfg.themes.forEach((t) => {
+        const owned = RM.isThemeOwned(t.id);
+        const isCur = t.id === current;
+        const b = document.createElement('button');
+        b.className = 'theme-card' + (owned ? '' : ' locked') + (isCur ? ' selected' : '');
+        b.style.setProperty('--t1', t.bg[0]);
+        b.style.setProperty('--t2', t.bg[1]);
+        b.style.setProperty('--tray', t.tray[0]);
+        if (owned && !isCur) { b.dataset.action = 'theme-use'; b.dataset.theme = t.id; }
+        if (!owned) b.disabled = true;
+        b.setAttribute('aria-label', t.name + (isCur ? ', in use' : owned ? ', tap to use' : ', locked, win it from a gift'));
+        b.innerHTML = '<span class="theme-swatch"><i></i></span><span class="theme-name">' + t.name + '</span>' +
+          '<span class="theme-state">' + (isCur ? '<i class="bi bi-check-lg"></i> In use' : owned ? 'Use' : '<i class="bi bi-lock-fill"></i> Gift') + '</span>';
+        themeGrid.appendChild(b);
+      });
+
+      // rolling sounds
+      const list = $('#sound-list');
+      list.innerHTML = '';
+      const ball = SaveManager.selectedBall();
+      const rollSel = RM.state.rollSound && RM.isSoundOwned(RM.state.rollSound) ? RM.state.rollSound : '';
+      const row = (id, title, sub, owned, selected) => {
+        const pid = id || ball.id;
+        const playing = AudioManager.previewing === pid;
+        const d = document.createElement('div');
+        d.className = 'sound-row' + (owned ? '' : ' locked') + (selected ? ' selected' : '');
+        d.innerHTML = '<div class="sound-info"><b>' + title + '</b><small>' + sub + '</small></div>' +
+          (owned ? '<button class="preview-btn' + (playing ? ' playing' : '') + '" data-action="ball-preview" data-ball="' + pid +
+            '" aria-label="Preview ' + title + '" aria-pressed="' + playing + '"><i class="bi ' + (playing ? 'bi-stop-fill' : 'bi-play-fill') + '"></i></button>' : '') +
+          '<button class="use-btn" ' + (owned && !selected ? 'data-action="sound-use" data-sound="' + id + '"' : 'disabled') +
+          ' aria-label="' + (selected ? title + ' in use' : owned ? 'Use ' + title : title + ', locked') + '">' +
+          (selected ? '<i class="bi bi-check-lg"></i> In use' : owned ? 'Use' : '<i class="bi bi-lock-fill"></i>') + '</button>';
+        list.appendChild(d);
+      };
+      row('', "Ball's own sound", ball.name + ' \u00b7 ' + ball.sound, true, rollSel === '');
+      BP.BallSkins.SKINS.forEach((sk) => {
+        const owned = RM.isSoundOwned(sk.id);
+        row(sk.id, sk.name, sk.sound + (owned ? '' : ' \u00b7 unlock the ball or win it from a gift'), owned, rollSel === sk.id);
+      });
+
+      // history
+      const hist = $('#gift-history');
+      hist.innerHTML = '';
+      if (!RM.state.history.length) hist.innerHTML = '<li class="empty">No gifts opened yet.</li>';
+      RM.state.history.slice(0, 15).forEach((h) => {
+        const d = RM.describe(h);
+        const li = document.createElement('li');
+        li.innerHTML = '<img src="' + RM.artUrl(d.art) + '" alt=""><div><b>' + d.name + '</b><small>' +
+          (h.source === 'milestone' ? 'Milestone gift' : 'Daily gift') + ' \u00b7 ' + new Date(h.t).toLocaleDateString() + '</small></div>';
+        hist.appendChild(li);
+      });
+    },
+
+    async openDailyGift() {
+      const RM = BP.RewardManager;
+      if (RM.busy) return;
+      const next = RM.dailyNext();
+      let res;
+      if (next.kind === 'ad') {
+        res = await RM.openDailyWithAd(() => UI.showAd());
+        if (!res.ok && res.reason === 'ad') UI.toast('Watch the whole ad to get the gift.');
+      } else if (next.kind === 'coins') {
+        if (RM.coins < next.cost) { UI.toast('Not enough coins. This gift costs ' + next.cost + ' coins.'); return; }
+        const yes = await UI.confirm('Open another gift?',
+          'This gift costs ' + next.cost + ' coins. You have ' + RM.coins + ' coins.', 'Spend ' + next.cost, { icon: 'coin', tone: 'gold' });
+        if (!yes) return;
+        res = RM.openDailyWithCoins(next.cost);
+        if (!res.ok) UI.toast(res.reason === 'coins' ? 'Not enough coins.' : 'The price changed. Please try again.');
+      } else return;
+      if (UI.currentScreen === 'gifts') UI.renderGifts();
+      if (res && res.ok) UI.showReward(res.entry);
+    },
+
+    openMilestoneGift() {
+      const entry = BP.RewardManager.openMilestone();
+      $('#btn-win-gift').hidden = true;
+      if (UI.currentScreen === 'gifts') UI.renderGifts();
+      if (entry) UI.showReward(entry);
+    },
+
+    /** Placeholder rewarded ad: resolves true only when it was watched to the end.
+     *  Replace with an ad network SDK later; RewardManager only needs this promise. */
+    showAd() {
+      let left = BP.RewardsConfig.ad.seconds;
+      const timer = $('#ad-timer');
+      const claim = $('#btn-ad-claim');
+      claim.disabled = true;
+      timer.textContent = 'Reward in ' + left + 's';
+      UI.openOverlay('ad');
+      clearInterval(adTimer);
+      adTimer = setInterval(() => {
+        left -= 1;
+        if (left > 0) { timer.textContent = 'Reward in ' + left + 's'; return; }
+        clearInterval(adTimer);
+        timer.textContent = 'Reward unlocked';
+        claim.disabled = false;
+        claim.focus();
+      }, 1000);
+      return new Promise((resolve) => { adResolve = resolve; });
+    },
+
+    closeAd(claimed) {
+      if (claimed && $('#btn-ad-claim').disabled) return;
+      clearInterval(adTimer);
+      UI.closeOverlay('ad');
+      const r = adResolve;
+      adResolve = null;
+      if (r) r(!!claimed);
+    },
+
+    showReward(entry) {
+      const RM = BP.RewardManager;
+      const d = RM.describe(entry);
+      rewardShown = entry;
+      const stage = $('#reward-stage');
+      const art = $('#reward-art');
+      art.innerHTML = '';
+      if (entry.type === 'ball') {
+        const c = document.createElement('canvas');
+        art.appendChild(c);
+        UI.paintBall(c, BP.BallSkins.get(entry.item), 130);
+      } else if (entry.type === 'theme') {
+        const t = RM.cfg.themes.find((x) => x.id === entry.item);
+        art.innerHTML = '<span class="theme-swatch big" style="--t1:' + t.bg[0] + ';--t2:' + t.bg[1] + ';--tray:' + t.tray[0] + '"><i></i></span>';
+      } else {
+        art.innerHTML = '<img src="' + RM.artUrl(d.art) + '" alt="">';
+      }
+      $('#reward-label').textContent = 'Opening\u2026';
+      $('#reward-title').textContent = '';
+      $('#btn-reward-use').hidden = true;
+      $('#btn-reward-close').disabled = true;
+      stage.classList.remove('revealed');
+      UI.openOverlay('reward');
+      AudioManager.play('hint');
+      const delay = SaveManager.settings.animations === 'reduced' ? 150 : 1100;
+      setTimeout(() => {
+        stage.classList.add('revealed');
+        AudioManager.play('win');
+        $('#reward-label').textContent = 'You got: ' + d.label;
+        $('#reward-title').textContent = d.name;
+        const canUse = entry.type === 'ball' || entry.type === 'theme' || entry.type === 'sound';
+        const use = $('#btn-reward-use');
+        use.hidden = !canUse;
+        use.textContent = entry.type === 'theme' ? 'Use this theme' : entry.type === 'sound' ? 'Use this sound' : 'Use this ball';
+        $('#btn-reward-close').disabled = false;
+        (canUse ? use : $('#btn-reward-close')).focus();
+      }, delay);
+    },
+
+    useReward() {
+      const e = rewardShown;
+      if (!e) return;
+      if (e.type === 'ball') { SaveManager.setBall(e.item); BP.Engine.applyBall(); }
+      if (e.type === 'theme') UI.useTheme(e.item, true);
+      if (e.type === 'sound') UI.useSound(e.item, true);
+      UI.toast(BP.RewardManager.describe(e).name + ' is now in use');
+      UI.closeReward();
+    },
+
+    closeReward() {
+      UI.closeOverlay('reward');
+      rewardShown = null;
+      if (UI.currentScreen === 'gifts') UI.renderGifts();
+      if (UI.currentScreen === 'home') UI.renderHome();
+    },
+
+    useTheme(id, quiet) {
+      if (!BP.RewardManager.setTheme(id)) return;
+      BP.Engine.applyTheme();
+      if (UI.currentScreen === 'gifts') UI.renderGifts();
+      if (!quiet) UI.toast(BP.RewardManager.theme().name + ' theme on');
+    },
+
+    useSound(id, quiet) {
+      if (!BP.RewardManager.setRollSound(id)) return;
+      BP.Engine.applyBall();
+      if (UI.currentScreen === 'gifts') UI.renderGifts();
+      if (!quiet) UI.toast(id ? BP.BallSkins.get(id).name + ' sound selected' : "Using the ball's own sound");
     },
 
     // ---- ball collection ---------------------------------------------------------
@@ -134,8 +380,7 @@
     },
 
     unlockedBallCount() {
-      const stars = SaveManager.allStars();
-      return BP.BallSkins.SKINS.filter((s) => BP.BallSkins.isUnlocked(s, stars)).length;
+      return BP.BallSkins.SKINS.filter((s) => SaveManager.isBallOwned(s)).length;
     },
 
     renderBalls() {
@@ -156,7 +401,7 @@
         const cards = document.createElement('div');
         cards.className = 'ball-cards';
         BP.BallSkins.SKINS.filter((s) => s.collection === col).forEach((skin) => {
-          const unlocked = BP.BallSkins.isUnlocked(skin, stars);
+          const unlocked = SaveManager.isBallOwned(skin);
           const isSel = skin.id === selected;
           const isPlaying = playing === skin.id;
           const card = document.createElement('div');
@@ -185,15 +430,16 @@
     },
 
     setPreviewButton(id, playing) {
-      const btn = document.querySelector('.preview-btn[data-ball="' + id + '"]');
-      if (!btn) return;
-      btn.classList.toggle('playing', playing);
-      btn.setAttribute('aria-pressed', String(playing));
-      btn.querySelector('.bi').className = 'bi ' + (playing ? 'bi-stop-fill' : 'bi-play-fill');
+      $$('.preview-btn[data-ball="' + id + '"]').forEach((btn) => {
+        btn.classList.toggle('playing', playing);
+        btn.setAttribute('aria-pressed', String(playing));
+        btn.querySelector('.bi').className = 'bi ' + (playing ? 'bi-stop-fill' : 'bi-play-fill');
+      });
     },
 
     toggleBallPreview(id) {
-      if (AudioManager.previewing === id) { AudioManager.stopPreview(); return; }
+      if (AudioManager.previewing === id) { AudioManager.stopPreview(); UI.setPreviewButton(id, false); return; }
+      if (AudioManager.previewing) UI.setPreviewButton(AudioManager.previewing, false);
       if (!SaveManager.settings.sound) { UI.toast('Sound effects are off. Turn them on in Settings to hear previews.'); return; }
       const ok = AudioManager.playPreview(id, (endedId) => UI.setPreviewButton(endedId, false));
       if (ok) UI.setPreviewButton(id, true);
@@ -202,7 +448,7 @@
 
     useBall(id) {
       const skin = BP.BallSkins.get(id);
-      if (!BP.BallSkins.isUnlocked(skin, SaveManager.allStars())) return;
+      if (!SaveManager.isBallOwned(skin)) return;
       SaveManager.setBall(id);
       BP.Engine.applyBall();
       UI.renderBalls();
@@ -232,6 +478,10 @@
       $('#home-play-sub').textContent = cur && cur.mode === 'classic' ? `Continue level ${n}` : allDone ? 'All levels complete!' : `Level ${n}`;
       const total = SaveManager.MODE_IDS.reduce((s, m) => s + SaveManager.totalStars(m), 0);
       $('#home-stars span').textContent = total;
+      $('#home-coins span').textContent = BP.RewardManager.coins;
+      const ready = BP.RewardManager.readyCount();
+      $('#gifts-badge').hidden = !ready;
+      $('#gifts-badge').textContent = ready;
       UI.paintBall($('#home-ball-icon'), SaveManager.selectedBall(), 36);
       $('#balls-badge').hidden = UI.unlockedBallCount() <= (SaveManager.data.ballsSeen || 1);
       const badge = $('#daily-badge');
@@ -313,6 +563,11 @@
       $('#hud-moves').textContent = session.moves;
       const target = $('#hud-target');
       const stat = target.closest('.stat');
+      const extra = $('#hud-extra');
+      const have = BP.RewardManager.extraMoves;
+      extra.hidden = !session.moveLimit || !have;
+      extra.querySelector('span').textContent = Math.min(BP.RewardManager.cfg.extraMovesPerUse, have);
+      extra.setAttribute('aria-label', 'Use extra moves (' + have + ' left)');
       if (session.moveLimit) {
         target.textContent = session.movesLeft;
         stat.classList.toggle('warn', session.movesLeft <= 2);
@@ -355,7 +610,10 @@
     closeAllOverlays() { $$('.overlay.open').forEach((o) => o.classList.remove('open')); },
     overlayOpen() { return !!document.querySelector('.overlay.open'); },
 
-    showWin({ stars, moves, time, par, best, isBest, hasNext, mode, isLast, hintsUsed }) {
+    showWin({ stars, moves, time, par, best, isBest, hasNext, mode, isLast, hintsUsed, coins, giftReady }) {
+      $('#win-coins').hidden = !coins;
+      $('#win-coins span').textContent = '+' + coins + ' coins for your first clear';
+      $('#btn-win-gift').hidden = !giftReady;
       $('#win-title').textContent = mode === 'daily' ? 'Daily Solved!' : isLast ? 'Final Level Cleared!' : 'Level Complete!';
       $('#win-moves').textContent = mode === 'challenge' || mode === 'classic' || mode === 'daily' ? `${moves} / ${par}` : moves;
       $('#win-time').textContent = fmtTime(time);
@@ -384,7 +642,11 @@
       });
     },
 
-    showFail({ title, msg, canContinue, icon }) {
+    showFail({ title, msg, canContinue, icon, extraMoves }) {
+      const fm = $('#btn-fail-moves');
+      const have = BP.RewardManager.extraMoves;
+      fm.hidden = !extraMoves || !have;
+      fm.querySelector('span').textContent = 'Use +' + Math.min(BP.RewardManager.cfg.extraMovesPerUse, have) + ' Extra Moves (' + have + ' left)';
       $('#fail-icon').className = 'bi ' + (icon || 'bi-exclamation-octagon-fill');
       $('#fail-title').textContent = title;
       $('#fail-msg').textContent = msg;
@@ -443,7 +705,11 @@
       m.setAttribute('aria-pressed', String(!!s.music));
     },
 
-    confirm(title, msg, yesLabel = 'Yes') {
+    confirm(title, msg, yesLabel = 'Yes', opts = {}) {
+      const icon = $('#confirm-icon');
+      icon.className = 'panel-icon ' + (opts.tone === 'gold' ? 'win' : 'fail');
+      icon.innerHTML = opts.icon === 'coin' ? '<img src="' + BP.RewardManager.artUrl('coins') + '" alt="">' : '<i class="bi bi-exclamation-triangle-fill"></i>';
+      $('#confirm-yes').className = 'btn ' + (opts.tone === 'gold' ? 'btn-primary' : 'btn-danger');
       $('#confirm-title').textContent = title;
       $('#confirm-msg').textContent = msg;
       $('#confirm-yes').textContent = yesLabel;

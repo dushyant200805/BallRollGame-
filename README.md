@@ -37,6 +37,48 @@ The ball data lives in `js/data/ball-skins.js` and the sound recipes in
 audio. The browser renders each sound on demand (about 20 ms) and keeps only the selected and
 previewed balls in memory.
 
+## Gifts & Rewards
+
+Home has a **Gifts & Rewards** button. Its badge counts the gifts that are ready to open.
+
+- **Coins:** you earn coins the first time you solve a level or a day's Daily puzzle, and from
+  gifts. Coins pay for extra daily gifts.
+- **Extra Moves:** Challenge levels have a move limit. Tap the **+3** badge on *Moves left*, or
+  **Use Extra Moves** on the *Out of moves* dialog, to add moves and keep playing.
+- **Milestone gift:** you get one gift for every 10 completed levels. All modes count, and each
+  level counts once.
+- **Daily gift:** the first gift each day opens after a rewarded ad. Each further gift that day
+  costs coins, and the price doubles each time (25, 50, 100, 200 ...). The count and price reset
+  the next day.
+- **What a gift can give:** each gift gives one of a new ball, a new rolling sound, a game theme,
+  extra moves or coins.
+  - You never get a cosmetic you already own. If a type has nothing left to unlock, the gift
+    picks from the other types.
+- **Using rewards:** the Gifts screen lets you pick a theme (background and board tray) and a
+  rolling sound to use with any ball. It also shows the gift history.
+- **Safeguards:**
+  - Every coin purchase asks for confirmation first.
+  - Each gift is saved when it is claimed, so a double tap can't open a gift twice or charge
+    coins twice.
+  - The daily count is kept when you reset progress.
+
+**Configuration** lives in `js/data/rewards-config.js`. The mobile app gets a copy through
+`mobile/scripts/convert-levels.js`. You can change these settings there:
+- reward weights (unlock probabilities)
+- amounts
+- the coin cost and how fast it doubles
+- the daily limit
+- how long the ad is
+- the list of themes
+
+The rules are in `js/core/rewards.js`, which is pure logic with unit tests.
+
+**Art:** all reward art is **placeholder** SVG in `assets/rewards/`, including the posters, the
+gift box, the coins and the ad creative. To use final designs, replace the files and keep the
+same names. The ad is a stand-in screen with a countdown. To connect a real ad network, replace
+`UI.showAd()` (web) or `AdPlaceholder` (mobile). Each only has to resolve `true` when the ad was
+watched to the end.
+
 > **Native mobile app:** [`mobile/`](mobile/) contains **Ball Roll**, the installable
 > Android/iOS version, built with React Native + Expo + Skia. It has the same levels and
 > rules. See [mobile/README.md](mobile/README.md) and [mobile/BUILDING.md](mobile/BUILDING.md).
@@ -103,12 +145,16 @@ js/core/                DOM-free game logic (also runs in Node for tests)
   pathfinding.js        path tracing + BFS solver (hints, par, solvability)
   generator.js          level generator (scramble-by-legal-moves = always solvable)
   session.js            one level attempt: moves, undo, timer, win/lose rules
+  rewards.js            gift rules: pick a reward, no duplicates, daily cost, milestones
 js/data/levels.js       level data (generated; kept separate from logic)
 js/data/ball-skins.js   18 ball skins: look, unlock cost (shared with the mobile app)
 js/audio/ball-sound-recipes.js  per-ball rolling sounds, synthesized (shared with mobile)
+js/data/rewards-config.js  reward types, weights, amounts, coin costs, themes, art (shared)
+assets/rewards/         placeholder reward art and posters (SVG, replaceable)
 js/game/
   level-manager.js      tiers, mode rules, daily puzzle
   save-manager.js       LocalStorage persistence
+  reward-manager.js     coins, extra moves, daily/milestone gifts, themes, rolling sounds
   audio-manager.js      Web Audio SFX + generative music
   geometry.js           pipe geometry shared by renderer and ball
   renderer.js           canvas board/tile/pipe drawing
@@ -144,5 +190,6 @@ names (Beginner → Master) live in `js/game/level-manager.js`.
 ## Saved data (LocalStorage key `ballpath.save.v1`)
 
 Unlocked levels, completed levels, stars, best moves and times per mode, daily results
-and streak, sound/music/vibration/animation settings, and the in-progress board (close
+and streak, sound/music/vibration/animation settings, coins, extra moves, unlocked rewards,
+selected theme and rolling sound, gift history and today's gift count, and the in-progress board (close
 the tab mid-level and **Play → Continue** resumes it, undo history included).

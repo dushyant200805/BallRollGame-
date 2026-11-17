@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><!-- PLACEHOLDER art (reward reveals draw the real ball from js/data/ball-skins.js) -->
+<defs><radialGradient id="g" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#d7c8ff"/><stop offset=".5" stop-color="#7c6cff"/><stop offset="1" stop-color="#3a2a9a"/></radialGradient></defs>
+<ellipse cx="100" cy="184" rx="56" ry="9" fill="#000" opacity=".25"/>
+<circle cx="100" cy="100" r="70" fill="url(#g)"/>
+<ellipse cx="78" cy="72" rx="22" ry="14" fill="#fff" opacity=".55"/></svg>

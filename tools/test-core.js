@@ -99,6 +99,19 @@ test('failed roll returns to play; challenge limit loses', () => {
   assert.strictEqual(s.tryMove(1, 1, DIR.N).reason, 'limit');
   assert.strictEqual(s.finishRoll(s.startRoll()), 'lost');
 });
+test('extra moves raise the limit and revive an out-of-moves loss', () => {
+  const s = new GameSession(lvl, { mode: 'challenge', moveLimit: 1 });
+  s.tryMove(0, 1, DIR.E);
+  assert.strictEqual(s.finishRoll(s.startRoll()), 'lost');
+  assert.ok(s.addMoves(3));
+  assert.strictEqual(s.state, 'playing');
+  assert.strictEqual(s.movesLeft, 3);
+  const snap = s.snapshot();
+  const t = new GameSession(lvl, { mode: 'challenge', moveLimit: 1 });
+  t.restore(snap);
+  assert.strictEqual(t.moveLimit, 4);
+  assert.ok(!new GameSession(lvl).addMoves(3), 'no limit, nothing to add');
+});
 test('time limit expires; pause stops clock', () => {
   const s = new GameSession(lvl, { mode: 'timetrial', timeLimit: 10 });
   s.pause(); s.tick(50); assert.strictEqual(s.elapsed, 0);
@@ -151,6 +164,49 @@ test('daily puzzle is deterministic and solvable', () => {
   for (const [x, y, dir] of a.solution) assert.ok(s.tryMove(x, y, dir).ok);
   assert.ok(s.connection.ok);
 });
+
+console.log('Rewards');
+{
+  const cfg = require('../js/data/rewards-config.js');
+  const R = require('../js/core/rewards.js');
+  const { SKINS } = require('../js/data/ball-skins.js');
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  test('gifts never give a cosmetic twice and fall back when all are owned', () => {
+    const st = R.defaultState(cfg);
+    const env = { cfg, skins: SKINS, stars: 0 };
+    for (let i = 0; i < 400; i++) {
+      const r = R.pickReward('milestone', st, env, rand);
+      assert.ok(R.grant(r, 'milestone', st, env), 'duplicate ' + JSON.stringify(r));
+    }
+    assert.strictEqual(new Set(st.balls).size, st.balls.length);
+    assert.strictEqual(st.balls.length, SKINS.filter((s) => s.cost > 0).length, 'every ball eventually unlocked');
+    assert.strictEqual(st.themes.length, cfg.themes.length - 1);
+    for (let i = 0; i < 50; i++) assert.ok(['coins', 'moves'].includes(R.pickReward('daily', st, env, rand).type));
+    assert.strictEqual(st.history.length, cfg.historyLimit);
+  });
+  test('granting an owned cosmetic is refused', () => {
+    const st = R.defaultState(cfg);
+    const env = { cfg, skins: SKINS, stars: 0 };
+    assert.ok(R.grant({ type: 'theme', item: 'space' }, 'daily', st, env));
+    assert.strictEqual(R.grant({ type: 'theme', item: 'space' }, 'daily', st, env), null);
+    assert.strictEqual(R.grant({ type: 'ball', item: 'ruby' }, 'daily', st, env), null, 'ruby is free');
+    assert.strictEqual(R.grant({ type: 'sound', item: 'ruby' }, 'daily', st, env), null, 'comes with the ball');
+  });
+  test('daily gift: free by ad, then doubling coin cost, reset next day', () => {
+    const st = R.defaultState(cfg);
+    assert.deepStrictEqual(R.dailyNext(st, cfg, '2026-11-17'), { kind: 'ad', opened: 0 });
+    const costs = [];
+    for (let i = 1; i <= 4; i++) { st.day.opened = i; costs.push(R.dailyNext(st, cfg, '2026-11-17').cost); }
+    assert.deepStrictEqual(costs, [25, 50, 100, 200]);
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-18').kind, 'ad');
+  });
+  test('milestone gift every 10 completed levels', () => {
+    assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 9).available, 0);
+    assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 21).available, 2);
+    assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 2 }, cfg, 21).progress, 1);
+  });
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

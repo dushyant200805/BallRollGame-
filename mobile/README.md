@@ -29,6 +29,16 @@ It contains no WebView, works offline and needs no backend.
   - Settings has Master, Ball rolling, Sound effects and Music volume sliders.
   - The 18 rolling loops (`assets/audio/balls/*.wav`) are rendered from the web game's
     `js/audio/ball-sound-recipes.js`. Only the selected ball's loop is kept in memory.
+- **Gifts & Rewards**, the same as the web version. See the main README for the rules.
+  - It includes coins, Extra Moves for Challenge levels, a milestone gift every 10 levels, and
+    daily gifts.
+  - The first daily gift opens with a placeholder rewarded ad. Further gifts cost doubling
+    coins.
+  - Gifts can unlock balls, rolling sounds and game themes, with no duplicates.
+  - The rules are in `src/game/core/rewards.ts`, a port of `js/core/rewards.js` with tests
+    against it.
+  - The config and the placeholder SVG art are generated from the web files by
+    `npm run convert-levels`.
 - The original wooden look, drawn in code: maple and walnut tiles with grain, brass screws,
   glowing tubes, a rolling ball, confetti and sparkles.
 - The original sounds and music, rendered from the web synth recipes.
@@ -45,7 +55,7 @@ mobile/
   app.json                 name, icons, splash, package ids, permissions, plugins
   src/
     App.tsx                fonts, storage, audio boot; splash hand-off; lifecycle
-    navigation/            native stack (Splash, Home, Levels, Game, Settings, About)
+    navigation/            native stack (Splash, Home, Levels, Game, Balls, Gifts, Settings, About)
     screens/               one file per screen
     components/            buttons, level tiles, dialogs, logo, toast, background
     game/
@@ -55,7 +65,7 @@ mobile/
       engine.ts            game loop and state machine
       levelManager.ts      tiers, limits, daily puzzle
       useBoardGesture.ts   touch handling
-    services/              storage (AsyncStorage), audio (expo-av), haptics
+    services/              storage (AsyncStorage), audio (expo-av), haptics, rewards
     hooks/  utils/  constants/
   assets/                  audio (WAV), images (icon, adaptive icon, splash)
   scripts/                 tests, level conversion, audio synth, icon renderer, Android build

@@ -16,6 +16,9 @@ execFileSync(process.execPath, [tsc,
   '--outDir', outDir, '--module', 'commonjs', '--target', 'es2019', '--strict', '--esModuleInterop',
   '--skipLibCheck', '--rootDir', path.join(root, 'src'),
   path.join(root, 'src/game/levelManager.ts'),
+  path.join(root, 'src/game/core/rewards.ts'),
+  path.join(root, 'src/game/data/ballSkins.ts'),
+  path.join(root, 'src/game/data/rewardsConfig.ts'),
 ], { stdio: 'inherit' });
 
 const req = (p) => require(path.join(outDir, p));
@@ -134,6 +137,44 @@ test('limits tighten across levels', () => {
   const t20 = LevelManager.limitsFor('timetrial', LevelManager.get('timetrial', 20));
   assert.ok(t20.timeLimit > 0);
 });
+
+console.log('Rewards');
+{
+  const R = req('game/core/rewards');
+  const { REWARDS_CONFIG: cfg } = req('game/data/rewardsConfig');
+  const { BALL_SKINS } = req('game/data/ballSkins');
+  const webR = require(path.join(root, '..', 'js', 'core', 'rewards.js'));
+  const webCfg = require(path.join(root, '..', 'js', 'data', 'rewards-config.js'));
+  test('config matches the web game', () => assert.deepStrictEqual(JSON.parse(JSON.stringify(cfg)), JSON.parse(JSON.stringify(webCfg))));
+  test('same seed gives the same gifts as the web game, never a duplicate cosmetic', () => {
+    const mk = () => { let seed = 11; return () => ((seed = (seed * 16807) % 2147483647) / 2147483647); };
+    const a = R.defaultRewardState(cfg), b = webR.defaultState(webCfg);
+    const ra = mk(), rb = mk();
+    for (let i = 0; i < 300; i++) {
+      const env = { cfg, skins: BALL_SKINS, stars: 5 };
+      const ea = R.grant(R.pickReward(i % 2 ? 'daily' : 'milestone', a, env, ra), 'daily', a, env, 1);
+      const eb = webR.grant(webR.pickReward(i % 2 ? 'daily' : 'milestone', b, { ...env, cfg: webCfg }, rb), 'daily', b, { ...env, cfg: webCfg }, 1);
+      assert.ok(ea, 'duplicate cosmetic');
+      assert.deepStrictEqual(ea, eb);
+    }
+    assert.strictEqual(new Set(a.balls).size, a.balls.length);
+  });
+  test('daily costs double and reset each day', () => {
+    const st = R.defaultRewardState(cfg);
+    assert.strictEqual(R.dailyNext(st, cfg, 'd1').kind, 'ad');
+    st.day.opened = 3;
+    assert.strictEqual(R.dailyNext(st, cfg, 'd1').cost, 100);
+    assert.strictEqual(R.dailyNext(st, cfg, 'd2').kind, 'ad');
+  });
+  test('extra moves revive an out-of-moves loss', () => {
+    const s = new GameSession(tiny, { mode: 'challenge', moveLimit: 1 });
+    s.moves = 1;
+    assert.strictEqual(s.finishRoll(s.startRoll() && { ok: false, fail: { reason: 'gap' } }), 'lost');
+    assert.ok(s.addMoves(3));
+    assert.strictEqual(s.state, 'playing');
+    assert.strictEqual(s.movesLeft, 3);
+  });
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

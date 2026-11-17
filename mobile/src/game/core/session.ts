@@ -28,6 +28,7 @@ export interface Snapshot {
   elapsed: number;
   history: MoveRecord[];
   hintsUsed: number;
+  bonusMoves?: number;
 }
 
 export type HintResult = null | { solved: true } | { solved: false; move: Move; remaining: number };
@@ -35,7 +36,8 @@ export type HintResult = null | { solved: true } | { solved: false; move: Move; 
 export class GameSession {
   readonly level: LevelDef;
   readonly mode: GameMode;
-  readonly moveLimit: number; // 0 = unlimited
+  moveLimit: number; // 0 = unlimited (raised by Extra Moves)
+  bonusMoves = 0; // extra moves added from rewards (kept on restart)
   readonly timeLimit: number; // seconds, 0 = none
   readonly initial: Board;
   board!: Board;
@@ -67,6 +69,18 @@ export class GameSession {
     this.state = 'playing';
     this.lostReason = null;
     this.trace_ = null;
+  }
+
+  /** Extra moves from rewards: raises the limit and revives a level lost by running out of moves. */
+  addMoves(n: number): boolean {
+    if (!this.moveLimit || !(n > 0)) return false;
+    this.moveLimit += n;
+    this.bonusMoves += n;
+    if (this.state === 'lost' && this.lostReason === 'moves') {
+      this.state = 'playing';
+      this.lostReason = null;
+    }
+    return true;
   }
 
   get connection(): TraceResult {
@@ -197,6 +211,7 @@ export class GameSession {
       elapsed: this.elapsed,
       history: this.history.slice(),
       hintsUsed: this.hintsUsed,
+      bonusMoves: this.bonusMoves,
     };
   }
 
@@ -210,6 +225,11 @@ export class GameSession {
       this.elapsed = +snap.elapsed || 0;
       this.history = Array.isArray(snap.history) ? snap.history : [];
       this.hintsUsed = snap.hintsUsed | 0;
+      const bonus = (snap.bonusMoves || 0) | 0;
+      if (this.moveLimit && bonus > this.bonusMoves) {
+        this.moveLimit += bonus - this.bonusMoves;
+        this.bonusMoves = bonus;
+      }
       this.state = 'playing';
       this.trace_ = null;
       return true;

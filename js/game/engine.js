@@ -115,13 +115,27 @@
       this.renderer.reduced = reduced;
       document.body.classList.toggle('reduced', reduced);
       this.applyBall();
+      this.applyTheme();
+    },
+
+    /** Background colours and board tray of the selected game theme. */
+    applyTheme() {
+      const t = BP.RewardManager.theme();
+      const root = document.documentElement.style;
+      root.setProperty('--bg-1', t.bg[0]);
+      root.setProperty('--bg-2', t.bg[1]);
+      root.setProperty('--glow-a', t.glow[0]);
+      root.setProperty('--glow-b', t.glow[1]);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', t.bg[1]);
+      if (this.renderer) { this.renderer.tray = t.tray; this.renderer.dirty = true; }
     },
 
     /** Use the selected ball skin for drawing and for the rolling sound. */
     applyBall() {
       const skin = SaveManager.selectedBall();
       this.ball.skin = skin;
-      AudioManager.setBall(skin.id);
+      AudioManager.setBall(BP.RewardManager.rollSoundId()); // a gifted sound can replace the ball's own
       if (this.renderer) this.renderer.dirty = true;
     },
 
@@ -131,7 +145,7 @@
       if (!res.ok) {
         if (res.reason === 'limit') {
           AudioManager.play('bump');
-          BP.UI.toast('No moves left. Press Play to roll!');
+          BP.UI.toast(BP.RewardManager.extraMoves ? 'No moves left. Tap +' + BP.RewardManager.cfg.extraMovesPerUse + ' to use Extra Moves, or press Play.' : 'No moves left. Press Play to roll!');
         }
         return false;
       }
@@ -252,22 +266,28 @@
       const s = this.session;
       const stars = s.stars();
       const time = Math.round(s.elapsed);
-      let best, isBest;
+      let best, isBest, firstClear;
+      const RM = BP.RewardManager;
+      const milestonesBefore = RM.milestone().available;
       if (this.mode === 'daily') {
         const prev = SaveManager.dailyResult(this.dailyKey);
+        firstClear = !prev;
         SaveManager.recordDaily(this.dailyKey, { stars, moves: s.moves, time });
         isBest = !prev || s.moves < prev.bestMoves;
         best = SaveManager.dailyResult(this.dailyKey).bestMoves;
       } else {
         const r = SaveManager.recordWin(this.mode, this.number, { stars, moves: s.moves, time }, LevelManager.count(this.mode));
         isBest = r.isBest && !!r.previous;
+        firstClear = !r.previous;
         best = SaveManager.levelResult(this.mode, this.number).bestMoves;
       }
+      const coins = firstClear ? RM.addCoins(RM.cfg.firstClearCoins) : 0;
+      const giftReady = RM.milestone().available > milestonesBefore;
       const hasNext = this.mode !== 'daily' && this.number < LevelManager.count(this.mode);
       setTimeout(() => {
         BP.UI.showWin({
           stars, moves: s.moves, time, par: this.level.par, best, isBest,
-          hasNext, mode: this.mode, hintsUsed: s.hintsUsed,
+          hasNext, mode: this.mode, hintsUsed: s.hintsUsed, coins, giftReady,
           isLast: this.mode !== 'daily' && this.number === LevelManager.count(this.mode),
         });
       }, this.renderer.reduced ? 150 : 650);
@@ -287,7 +307,23 @@
           ? 'The clock ran out before the ball reached the goal. Give it another go!'
           : 'You used every move without completing the path. Try a different route!',
         canContinue: false,
+        extraMoves: reason === 'moves',
       });
+    },
+
+    /** Spend Extra Moves from the reward inventory (levels with a move limit only). */
+    useExtraMoves() {
+      const s = this.session;
+      if (!s || !s.moveLimit || s.state === 'rolling' || s.state === 'won') return;
+      if (s.state === 'lost' && s.lostReason !== 'moves') return;
+      const n = BP.RewardManager.takeExtraMoves();
+      if (!n) { BP.UI.toast('No Extra Moves left. Open gifts to win more!'); return; }
+      s.addMoves(n);
+      BP.UI.closeOverlay('fail');
+      AudioManager.play('connect');
+      BP.UI.toast('+' + n + ' moves added');
+      this.refresh(false);
+      this.saveCurrent();
     },
 
     pause() {

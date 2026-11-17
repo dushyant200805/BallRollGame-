@@ -16,6 +16,9 @@ import { playTarget, totalStarsAllModes } from '../utils/progress';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import { ballPicture } from '../game/render/ballPainter';
 import type { ScreenProps } from '../navigation/types';
+import { RewardService } from '../services/rewards';
+import { RewardImage } from '../components/RewardImage';
+import { CoinChip } from './GiftsScreen';
 
 export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   useStorageVersion();
@@ -30,6 +33,7 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const ballPic = React.useMemo(() => ballPicture(ball, 40), [ball]);
   const newBalls = Storage.unlockedBallCount() > (Storage.data.ballsSeen || 1);
   const s = Storage.settings;
+  const giftsReady = RewardService.readyCount();
 
   const toggleSound = () => {
     const on = !s.sound;
@@ -59,9 +63,12 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           <Text style={styles.tag}>SLIDE · CONNECT · ROLL</Text>
         </Animated.View>
 
-        <View style={styles.stars} accessibilityLabel={`${totalStarsAllModes()} stars collected`}>
-          <Ionicons name="star" size={18} color={colors.gold} />
-          <Text style={styles.starsText}>{totalStarsAllModes()}</Text>
+        <View style={styles.walletRow}>
+          <View style={styles.stars} accessibilityLabel={`${totalStarsAllModes()} stars collected`}>
+            <Ionicons name="star" size={18} color={colors.gold} />
+            <Text style={styles.starsText}>{totalStarsAllModes()}</Text>
+          </View>
+          <CoinChip coins={RewardService.coins} />
         </View>
 
         <View style={{ width: contentW, gap: 14 }}>
@@ -90,17 +97,29 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               onPress={() => navigation.navigate('Levels', { mode: 'challenge' })} />
             <GameButton style={styles.cell} variant="violet" size="lg" label="Time Trial" icon={(ink) => <Ionicons name="stopwatch" size={22} color={ink} />}
               onPress={() => navigation.navigate('Levels', { mode: 'timetrial' })} />
-            <GameButton style={styles.wide} variant="orange" size="lg" accessibilityLabel={`Ball Collection${newBalls ? ', new balls unlocked' : ''}`}
+            <GameButton style={styles.cell} variant="orange" size="lg" accessibilityLabel={`Ball Collection${newBalls ? ', new balls unlocked' : ''}`}
               onPress={() => navigation.navigate('Balls')}>
               <View style={styles.row}>
-                <Canvas style={{ width: 40, height: 40 }}>
+                <Canvas style={{ width: 36, height: 36 }}>
                   <Picture picture={ballPic} />
                 </Canvas>
-                <Text style={styles.tileLabel}>Ball Collection</Text>
+                <Text style={styles.tileLabelSm}>{'Ball\nCollection'}</Text>
               </View>
               {newBalls ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>New</Text>
+                </View>
+              ) : null}
+            </GameButton>
+            <GameButton style={styles.cell} variant="purple" size="lg" accessibilityLabel={`Gifts and Rewards${giftsReady ? `, ${giftsReady} ready to open` : ''}`}
+              onPress={() => navigation.navigate('Gifts')}>
+              <View style={styles.row}>
+                <RewardImage art="gift" width={36} />
+                <Text style={styles.tileLabelSm}>{'Gifts &\nRewards'}</Text>
+              </View>
+              {giftsReady ? (
+                <View style={[styles.badge, styles.badgeGift]}>
+                  <Text style={[styles.badgeText, { color: '#fff' }]}>{giftsReady}</Text>
                 </View>
               ) : null}
             </GameButton>
@@ -129,6 +148,9 @@ const styles = StyleSheet.create({
   wide: { width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tileLabel: { fontFamily: fonts.bold, fontSize: 18, color: '#fff' },
+  tileLabelSm: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 17, color: '#fff' },
+  walletRow: { flexDirection: 'row', gap: 10 },
+  badgeGift: { backgroundColor: colors.coral },
   badge: { position: 'absolute', top: -6, right: -10, backgroundColor: colors.gold, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   badgeDone: { backgroundColor: '#4cc38a' },
   badgeText: { fontFamily: fonts.bold, fontSize: 11, color: '#3a2414' },

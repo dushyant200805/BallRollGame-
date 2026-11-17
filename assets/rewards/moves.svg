@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><!-- PLACEHOLDER art -->
+<ellipse cx="100" cy="184" rx="62" ry="9" fill="#000" opacity=".25"/>
+<rect x="30" y="30" width="140" height="140" rx="30" fill="#2fc4b6" stroke="#1b8a80" stroke-width="6"/>
+<path d="M100 56v88M56 100h88" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+<path d="M100 42l-16 18h32zM100 158l-16-18h32zM42 100l18-16v32zM158 100l-18-16v32z" fill="#fff"/>
+<circle cx="152" cy="48" r="26" fill="#ffcc33" stroke="#c99300" stroke-width="5"/>
+<path d="M152 36v24M140 48h24" stroke="#7a5600" stroke-width="6" stroke-linecap="round"/></svg>

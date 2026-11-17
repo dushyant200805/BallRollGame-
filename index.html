@@ -44,7 +44,10 @@
           <p class="tagline">Slide · Connect · Roll</p>
         </div>
 
-        <div class="home-stars" id="home-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
+        <div class="home-wallet">
+          <div class="home-stars" id="home-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
+          <div class="coin-count" id="home-coins" aria-label="Coins"><img src="assets/rewards/coins.svg" alt=""><span>0</span></div>
+        </div>
 
         <button class="btn btn-primary btn-xl" data-action="play">
           <i class="bi bi-play-circle-fill"></i>
@@ -57,6 +60,7 @@
           <button class="btn btn-tile btn-challenge" data-action="mode" data-mode="challenge"><i class="bi bi-lightning-charge-fill"></i><span>Challenge</span></button>
           <button class="btn btn-tile btn-time" data-action="mode" data-mode="timetrial"><i class="bi bi-stopwatch-fill"></i><span>Time Trial</span></button>
           <button class="btn btn-tile btn-balls" data-action="balls"><canvas class="balls-icon" id="home-ball-icon" width="64" height="64" aria-hidden="true"></canvas><span>Ball Collection</span><em class="badge" id="balls-badge" hidden>New</em></button>
+          <button class="btn btn-tile btn-gifts" data-action="gifts"><img class="gifts-icon" src="assets/rewards/gift-box.svg" alt=""><span>Gifts &amp; Rewards</span><em class="badge" id="gifts-badge" hidden>1</em></button>
         </div>
 
         <div class="home-footer">
@@ -94,6 +98,43 @@
       <div class="level-scroll"><div id="ball-grid"></div></div>
     </section>
 
+    <!-- GIFTS & REWARDS -->
+    <section class="screen" id="screen-gifts" aria-label="Gifts and rewards">
+      <header class="topbar">
+        <button class="icon-btn" data-action="home" aria-label="Back to home"><i class="bi bi-chevron-left"></i></button>
+        <h2>Gifts</h2>
+        <div class="coin-count" id="gifts-coins" aria-label="Coins"><img src="assets/rewards/coins.svg" alt=""><span>0</span></div>
+      </header>
+      <div class="level-scroll gifts-scroll">
+        <div class="wallet-row">
+          <div class="wallet-item"><img src="assets/rewards/coins.svg" alt=""><div><small>Coins</small><b id="wallet-coins">0</b></div></div>
+          <div class="wallet-item"><img src="assets/rewards/moves.svg" alt=""><div><small>Extra Moves</small><b id="wallet-moves">0</b></div></div>
+        </div>
+
+        <article class="gift-card" id="daily-gift-card">
+          <img class="gift-poster" src="assets/rewards/poster-daily.svg" alt="Daily Gift">
+          <p class="gift-desc" id="daily-gift-desc"></p>
+          <button class="btn btn-primary gift-open" data-action="open-daily" id="btn-open-daily"></button>
+          <p class="gift-meta" id="daily-gift-meta"></p>
+        </article>
+
+        <article class="gift-card" id="milestone-gift-card">
+          <img class="gift-poster" src="assets/rewards/poster-milestone.svg" alt="Milestone Gift">
+          <div class="milestone-bar" role="progressbar" aria-valuemin="0" id="milestone-bar"><i id="milestone-fill"></i><span id="milestone-text"></span></div>
+          <button class="btn btn-primary gift-open" data-action="open-milestone" id="btn-open-milestone"></button>
+        </article>
+
+        <div class="tier-head" style="--tier:#f06aa8">Game Themes <small>Win more from gifts</small></div>
+        <div class="theme-grid" id="theme-grid"></div>
+
+        <div class="tier-head" style="--tier:#7c6cff">Rolling Sounds <small>Use any sound with any ball</small></div>
+        <div class="sound-list" id="sound-list"></div>
+
+        <div class="tier-head" style="--tier:#ffcc33">Gift History</div>
+        <ul class="gift-history" id="gift-history"></ul>
+      </div>
+    </section>
+
     <!-- GAME -->
     <section class="screen" id="screen-game" aria-label="Game">
       <header class="topbar game-top">
@@ -106,7 +147,7 @@
       </header>
       <div class="hud-stats">
         <div class="stat"><i class="bi bi-arrows-move"></i><div><small>Moves</small><b id="hud-moves">0</b></div></div>
-        <div class="stat"><i class="bi bi-flag-fill" id="hud-target-icon"></i><div><small id="hud-target-label">Par</small><b id="hud-target">0</b></div></div>
+        <div class="stat"><i class="bi bi-flag-fill" id="hud-target-icon"></i><div><small id="hud-target-label">Par</small><b id="hud-target">0</b></div><button class="extra-moves-btn" data-action="use-moves" id="hud-extra" hidden aria-label="Use extra moves"><i class="bi bi-plus-lg"></i><span>3</span></button></div>
         <div class="stat" id="hud-time-stat"><i class="bi bi-stopwatch"></i><div><small id="hud-time-label">Time</small><b id="hud-time">0:00</b></div></div>
       </div>
       <div class="board-wrap" id="board-wrap">
@@ -147,6 +188,8 @@
           <i class="bi bi-star-fill wstar"></i>
         </div>
         <p class="win-note" id="win-note"></p>
+        <p class="win-coins" id="win-coins" hidden><img src="assets/rewards/coins.svg" alt=""><span></span></p>
+        <button class="btn btn-gift-ready" data-action="win-gift" id="btn-win-gift" hidden><img src="assets/rewards/gift-box.svg" alt="">Milestone gift ready! Open it</button>
         <div class="win-stats">
           <div><i class="bi bi-arrows-move"></i><small>Moves</small><b id="win-moves">0</b></div>
           <div><i class="bi bi-stopwatch"></i><small>Time</small><b id="win-time">0:00</b></div>
@@ -166,6 +209,7 @@
         <h2 id="fail-title">Path broken</h2>
         <p id="fail-msg"></p>
         <div class="panel-actions">
+          <button class="btn btn-primary" data-action="use-moves" id="btn-fail-moves" hidden><img class="btn-img" src="assets/rewards/moves.svg" alt=""><span></span></button>
           <button class="btn btn-primary" data-action="fail-continue" id="btn-fail-continue"><i class="bi bi-hand-index-thumb-fill"></i>Keep trying</button>
           <button class="btn" data-action="fail-retry"><i class="bi bi-arrow-repeat"></i>Restart level</button>
           <button class="btn" data-action="quit-levels"><i class="bi bi-grid-3x3-gap-fill"></i>Levels</button>
@@ -202,13 +246,38 @@
 
     <div class="overlay" id="overlay-confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
       <div class="panel">
-        <div class="panel-icon fail"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div class="panel-icon fail" id="confirm-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
         <h2 id="confirm-title">Are you sure?</h2>
         <p id="confirm-msg"></p>
         <div class="panel-actions row">
           <button class="btn" data-action="confirm-no">Cancel</button>
           <button class="btn btn-danger" data-action="confirm-yes" id="confirm-yes">Yes</button>
         </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-reward" role="dialog" aria-modal="true" aria-labelledby="reward-title">
+      <div class="panel panel-win panel-reward">
+        <div class="win-burst" aria-hidden="true"></div>
+        <div class="reward-stage" id="reward-stage">
+          <img class="reward-gift" id="reward-gift" src="assets/rewards/gift-box.svg" alt="">
+          <div class="reward-art" id="reward-art"></div>
+        </div>
+        <p class="reward-label" id="reward-label">Opening…</p>
+        <h2 id="reward-title"></h2>
+        <div class="panel-actions">
+          <button class="btn btn-primary" data-action="reward-use" id="btn-reward-use" hidden></button>
+          <button class="btn" data-action="reward-close" id="btn-reward-close" disabled>Collect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay overlay-ad" id="overlay-ad" role="dialog" aria-modal="true" aria-label="Rewarded ad">
+      <div class="ad-frame">
+        <div class="ad-top"><span class="ad-tag">Ad</span><span id="ad-timer">Reward in 5s</span>
+          <button class="ad-close" data-action="ad-close" aria-label="Close ad"><i class="bi bi-x-lg"></i></button></div>
+        <img class="ad-poster" src="assets/rewards/ad-poster.svg" alt="Test advertisement">
+        <button class="btn btn-primary" data-action="ad-claim" id="btn-ad-claim" disabled>Claim reward</button>
       </div>
     </div>
 
@@ -227,13 +296,16 @@
   <script src="js/core/pathfinding.js"></script>
   <script src="js/core/generator.js"></script>
   <script src="js/core/session.js"></script>
+  <script src="js/core/rewards.js"></script>
   <!-- Level data (kept separate from logic) -->
   <script src="js/data/levels.js"></script>
   <script src="js/data/ball-skins.js"></script>
   <script src="js/audio/ball-sound-recipes.js"></script>
+  <script src="js/data/rewards-config.js"></script>
   <!-- Game systems -->
   <script src="js/game/level-manager.js"></script>
   <script src="js/game/save-manager.js"></script>
+  <script src="js/game/reward-manager.js"></script>
   <script src="js/game/audio-manager.js"></script>
   <script src="js/game/geometry.js"></script>
   <script src="js/game/fx.js"></script>

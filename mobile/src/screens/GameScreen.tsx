@@ -19,6 +19,9 @@ import { Storage } from '../services/storage';
 import { AudioService } from '../services/audio';
 import { useStorageVersion } from '../hooks/useStorage';
 import type { ScreenProps } from '../navigation/types';
+import { RewardService } from '../services/rewards';
+import { RewardReveal, applyRewardNow } from '../components/RewardDialogs';
+import type { HistoryEntry } from '../game/core/rewards';
 
 const EMPTY_PICTURE = (() => {
   const rec = Skia.PictureRecorder();
@@ -36,6 +39,7 @@ export default function GameScreen({ navigation, route }: ScreenProps<'Game'>) {
   const [toast, setToast] = useState<{ msg: string | null; id: number }>({ msg: null, id: 0 });
   const [loading, setLoading] = useState(false);
   const [side, setSide] = useState(0);
+  const [reveal, setReveal] = useState<HistoryEntry | null>(null);
 
   const onUi = useCallback((p: UiPatch) => {
     if (p.hud) setHud(p.hud);
@@ -174,7 +178,15 @@ export default function GameScreen({ navigation, route }: ScreenProps<'Game'>) {
 
       <View style={styles.stats}>
         <Stat icon="move" label="Moves" value={String(hud?.moves ?? 0)} />
-        <Stat icon={hud?.targetIcon === 'flash' ? 'flash' : 'flag'} label={hud?.targetLabel ?? 'Par'} value={String(hud?.target ?? 0)} warn={hud?.targetWarn} />
+        <View style={{ flex: 1 }}>
+          <Stat icon={hud?.targetIcon === 'flash' ? 'flash' : 'flag'} label={hud?.targetLabel ?? 'Par'} value={String(hud?.target ?? 0)} warn={hud?.targetWarn} />
+          {hud?.extraMoves && hud.controlsEnabled ? (
+            <Pressable onPress={() => engine.useExtraMoves()} accessibilityRole="button" accessibilityLabel={`Use extra moves, ${RewardService.extraMoves} left`} hitSlop={8} style={styles.extraBtn}>
+              <Ionicons name="add" size={14} color="#fff" />
+              <Text style={styles.extraText}>{hud.extraMoves}</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <Stat icon="stopwatch-outline" label={hud?.timeLabel ?? 'Time'} value={hud?.time ?? '0:00'} warn={hud?.timeWarn} />
       </View>
 
@@ -211,9 +223,22 @@ export default function GameScreen({ navigation, route }: ScreenProps<'Game'>) {
           onHome={goHome}
         />
       ) : null}
-      {overlay?.type === 'win' ? <WinOverlay info={overlay.info} onNext={next} onReplay={replay} onMenu={leaveToMenu} /> : null}
+      {overlay?.type === 'win' ? (
+        <WinOverlay info={overlay.info} onNext={next} onReplay={replay} onMenu={leaveToMenu} onGift={() => setReveal(RewardService.openMilestone())} />
+      ) : null}
       {overlay?.type === 'fail' ? (
-        <FailOverlay info={overlay.info} showLevels={!isDaily} onContinue={() => engine.dismissFail()} onRetry={() => engine.restart()} onLevels={leaveToMenu} />
+        <FailOverlay info={overlay.info} showLevels={!isDaily} onContinue={() => engine.dismissFail()} onRetry={() => engine.restart()} onLevels={leaveToMenu} onExtraMoves={() => engine.useExtraMoves()} />
+      ) : null}
+      {reveal ? (
+        <RewardReveal
+          entry={reveal}
+          onClose={() => setReveal(null)}
+          onUse={() => {
+            onUi({ toast: applyRewardNow(reveal) });
+            setReveal(null);
+            engine.applySettings();
+          }}
+        />
       ) : null}
       {loading ? <LoadingOverlay text="Building today's puzzle…" /> : null}
       <Toast message={toast.msg} id={toast.id} bottom={insets.bottom + 110} />
@@ -276,6 +301,8 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.bold, fontSize: 12, color: '#fff' },
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12, maxWidth: 640, width: '100%', alignSelf: 'center' },
   stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 7 },
+  extraBtn: { position: 'absolute', top: -8, right: -6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.teal, borderBottomWidth: 2, borderBottomColor: colors.tealDark },
+  extraText: { fontFamily: fonts.bold, fontSize: 12, color: '#fff' },
   statWarn: { backgroundColor: 'rgba(232,68,90,0.55)' },
   statLabel: { fontFamily: fonts.medium, fontSize: 11, color: colors.inkDim },
   statValue: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink, marginTop: -2 },

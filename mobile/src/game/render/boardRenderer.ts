@@ -72,6 +72,8 @@ export class BoardRenderer {
   private grainSeq = 1;
   private tileCache = new WeakMap<Tile, { key: string; pic: SkPicture }>();
   private trayCache: { key: string; pic: SkPicture } | null = null;
+  /** Board tray colours from the selected game theme. */
+  tray: [string, string] = ['#8a5530', '#4b2a13'];
 
   attach(session: GameSession, ball: BallController) {
     this.session = session;
@@ -253,7 +255,7 @@ export class BoardRenderer {
 
   private trayPicture(): SkPicture {
     const n = this.session!.board.w;
-    const key = `${this.side}|${n}`;
+    const key = `${this.side}|${n}|${this.tray.join()}`;
     if (this.trayCache && this.trayCache.key === key) return this.trayCache.pic;
     const rec = Skia.PictureRecorder();
     const c = rec.beginRecording(Skia.XYWHRect(0, 0, this.side, this.side));
@@ -265,7 +267,7 @@ export class BoardRenderer {
   private drawTray(c: SkCanvas, n: number) {
     const side = this.side;
     const body = fillPaint(null);
-    body.setShader(linear(0, 0, 0, side, ['#8a5530', '#4b2a13']));
+    body.setShader(linear(0, 0, 0, side, this.tray));
     c.drawRRect(rrect(0, 0, side, side, side * 0.05), body);
     c.drawRRect(rrect(1, 1, side - 2, side - 2, side * 0.05), strokePaint('rgba(255,220,170,0.25)', 2));
 

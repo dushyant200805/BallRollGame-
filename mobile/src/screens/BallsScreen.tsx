@@ -12,6 +12,7 @@ import { colors, fonts } from '../constants/theme';
 import { BALL_COLLECTIONS, BALL_SKINS, type BallSkin } from '../game/data/ballSkins';
 import { ballPicture } from '../game/render/ballPainter';
 import { Storage } from '../services/storage';
+import { RewardService } from '../services/rewards';
 import { AudioService } from '../services/audio';
 import { useStorageVersion } from '../hooks/useStorage';
 import type { ScreenProps } from '../navigation/types';
@@ -58,7 +59,7 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
     if (!Storage.isBallUnlocked(skin)) return;
     AudioService.play('click');
     Storage.setBall(skin.id);
-    AudioService.setBall(skin.id);
+    AudioService.setBall(RewardService.rollSoundId());
     say(`${skin.name} selected`);
   }, []);
 
@@ -90,7 +91,7 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
                     key={skin.id}
                     skin={skin}
                     width={cardW}
-                    unlocked={stars >= skin.cost}
+                    unlocked={Storage.isBallUnlocked(skin)}
                     missing={Math.max(0, skin.cost - stars)}
                     selected={skin.id === selected}
                     playing={playing === skin.id}

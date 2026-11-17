@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplash from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { RootNavigator } from './navigation/RootNavigator';
+import { RewardService } from './services/rewards';
 import { Storage, type SaveData } from './services/storage';
 import { AudioService } from './services/audio';
 import { colors } from './constants/theme';
@@ -26,7 +27,7 @@ export default function App() {
       ]);
       setReady(true);
       // Sounds load in the background: the game never waits on (or breaks without) audio.
-      void AudioService.init(data.settings, Storage.selectedBall().id);
+      void AudioService.init(data.settings, RewardService.rollSoundId());
     })();
   }, []);
 

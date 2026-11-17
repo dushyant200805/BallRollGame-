@@ -1,25 +1,20 @@
 import React, { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../constants/theme';
+import { RewardService } from '../services/rewards';
+import { useStorageVersion } from '../hooks/useStorage';
 
-/** The web game's background: deep blue gradient with warm and teal glows. */
+/** The web game's background: gradient with a warm and a cool glow, coloured by the selected
+ *  game theme (themes are unlocked from gifts; see js/data/rewards-config.js). */
 function ScreenBackgroundImpl() {
+  useStorageVersion();
+  const t = RewardService.theme();
+  const fade = (c: string) => c.replace(/[\d.]+\)$/, '0)');
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient colors={[colors.bg1, colors.bg2]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }} style={StyleSheet.absoluteFill} />
-      <LinearGradient
-        colors={['rgba(255,204,120,0.12)', 'rgba(255,204,120,0)']}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.6, y: 0.4 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(47,196,182,0)', 'rgba(47,196,182,0.14)']}
-        start={{ x: 0.4, y: 0.6 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={[t.bg[0], t.bg[1]]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[t.glow[0], fade(t.glow[0])]} start={{ x: 0.1, y: 0 }} end={{ x: 0.6, y: 0.4 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[fade(t.glow[1]), t.glow[1]]} start={{ x: 0.4, y: 0.6 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
     </View>
   );
 }

@@ -204,8 +204,9 @@
     drawTray(ctx) {
       const side = this.side;
       const g = ctx.createLinearGradient(0, 0, 0, side);
-      g.addColorStop(0, '#8a5530');
-      g.addColorStop(1, '#4b2a13');
+      const tray = this.tray || ['#8a5530', '#4b2a13']; // set from the game theme
+      g.addColorStop(0, tray[0]);
+      g.addColorStop(1, tray[1]);
       rr(ctx, 0, 0, side, side, side * 0.05);
       ctx.fillStyle = g;
       ctx.fill();

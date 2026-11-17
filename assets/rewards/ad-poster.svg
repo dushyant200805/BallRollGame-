@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 560"><!-- PLACEHOLDER rewarded-ad creative (stands in for a real ad network) -->
+<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a4b6e"/><stop offset="1" stop-color="#0f1e2e"/></linearGradient></defs>
+<rect width="360" height="560" rx="24" fill="url(#a)"/>
+<rect x="24" y="24" width="312" height="340" rx="18" fill="#fff" fill-opacity=".08" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-dasharray="12 10"/>
+<path d="M90 300l60-80 44 56 30-36 56 60z" fill="#fff" opacity=".35"/>
+<circle cx="250" cy="130" r="30" fill="#ffcc33" opacity=".7"/>
+<text x="180" y="430" font-family="Fredoka,Arial Rounded MT Bold,Arial" font-weight="700" font-size="40" text-anchor="middle" fill="#fff">Your Ad Here</text>
+<text x="180" y="470" font-family="Fredoka,Arial" font-size="20" text-anchor="middle" fill="#b9c8d6">Test rewarded ad</text>
+<rect x="90" y="496" width="180" height="40" rx="20" fill="#2fc4b6"/>
+<text x="180" y="523" font-family="Arial" font-weight="700" font-size="18" text-anchor="middle" fill="#fff">INSTALL</text></svg>

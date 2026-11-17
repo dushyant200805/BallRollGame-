@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><!-- PLACEHOLDER art -->
+<ellipse cx="100" cy="184" rx="62" ry="9" fill="#000" opacity=".25"/>
+<circle cx="100" cy="100" r="76" fill="#7c6cff" stroke="#5040c8" stroke-width="6"/>
+<path d="M58 84h22l28-24v80l-28-24H58z" fill="#fff"/>
+<path d="M124 78q16 22 0 44M138 64q28 36 0 72" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/></svg>

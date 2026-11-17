@@ -16,6 +16,7 @@
     },
     ball: 'ruby', // selected ball skin (js/data/ball-skins.js)
     ballsSeen: 1, // unlocked-ball count when the collection was last opened (drives the "New" badge)
+    rewards: BP.Rewards.defaultState(BP.RewardsConfig), // coins, extra moves, gifts, themes (js/core/rewards.js)
     progress: {
       classic: { unlocked: 1, levels: {} },   // levels[n] = {stars, bestMoves, bestTime}
       challenge: { unlocked: 1, levels: {} },
@@ -96,8 +97,11 @@
     /** Selected ball skin; falls back to the default if it is no longer unlocked (e.g. after a reset). */
     selectedBall() {
       const skin = BP.BallSkins.get(data.ball);
-      return BP.BallSkins.isUnlocked(skin, SaveManager.allStars()) ? skin : BP.BallSkins.get(BP.BallSkins.DEFAULT);
+      return SaveManager.isBallOwned(skin) ? skin : BP.BallSkins.get(BP.BallSkins.DEFAULT);
     },
+
+    /** Unlocked by stars, or won from a gift. */
+    isBallOwned(skin) { return BP.Rewards.ballOwned(data.rewards, skin, SaveManager.allStars()); },
 
     setBall(id) {
       data.ball = id;
@@ -153,8 +157,10 @@
 
     resetProgress() {
       const settings = data.settings;
+      const day = data.rewards.day; // today's daily-gift count survives, so the free gift can't be re-opened
       data = defaults();
       data.settings = settings;
+      data.rewards.day = day;
       SaveManager.persist();
     },
 

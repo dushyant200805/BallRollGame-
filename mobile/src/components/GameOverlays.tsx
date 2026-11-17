@@ -8,6 +8,8 @@ import { colors, fonts } from '../constants/theme';
 import type { FailInfo, WinInfo } from '../game/engine';
 import { AudioService } from '../services/audio';
 import { Storage } from '../services/storage';
+import { RewardService } from '../services/rewards';
+import { RewardImage } from './RewardImage';
 
 export function PauseOverlay(p: { onResume: () => void; onRestart: () => void; onSettings: () => void; onLevels: () => void; onHome: () => void; showLevels: boolean }) {
   return (
@@ -24,7 +26,7 @@ export function PauseOverlay(p: { onResume: () => void; onRestart: () => void; o
 }
 
 /** Level complete: the stars pop in one by one with a chime each (like the web win dialog). */
-export function WinOverlay({ info, onNext, onReplay, onMenu }: { info: WinInfo; onNext: () => void; onReplay: () => void; onMenu: () => void }) {
+export function WinOverlay({ info, onNext, onReplay, onMenu, onGift }: { info: WinInfo; onNext: () => void; onReplay: () => void; onMenu: () => void; onGift: () => void }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const delay = Storage.settings.animations === 'reduced' ? 60 : 320;
@@ -57,6 +59,15 @@ export function WinOverlay({ info, onNext, onReplay, onMenu }: { info: WinInfo; 
         ))}
       </View>
       {info.note ? <Text style={styles.note}>{info.note}</Text> : null}
+      {info.coins ? (
+        <View style={styles.coinsRow}>
+          <RewardImage art="coins" width={20} />
+          <Text style={styles.coinsText}>{`+${info.coins} coins for your first clear`}</Text>
+        </View>
+      ) : null}
+      {info.giftReady && RewardService.milestone().available ? (
+        <GameButton style={{ marginBottom: 10 }} variant="purple" label="Milestone gift ready! Open it" icon={<RewardImage art="gift" width={28} />} onPress={onGift} />
+      ) : null}
       <View style={styles.stats}>
         <Stat icon="move" label="Moves" value={info.movesText} />
         <Stat icon="stopwatch-outline" label="Time" value={info.time} />
@@ -89,11 +100,15 @@ function Stat({ icon, label, value }: { icon: React.ComponentProps<typeof Ionico
 
 const FAIL_ICON = { broken: 'alert-circle', time: 'hourglass', moves: 'hand-left' } as const;
 
-export function FailOverlay({ info, onContinue, onRetry, onLevels, showLevels }: { info: FailInfo; onContinue: () => void; onRetry: () => void; onLevels: () => void; showLevels: boolean }) {
+export function FailOverlay({ info, onContinue, onRetry, onLevels, showLevels, onExtraMoves }: { info: FailInfo; onContinue: () => void; onRetry: () => void; onLevels: () => void; showLevels: boolean; onExtraMoves: () => void }) {
+  const have = RewardService.extraMoves;
   return (
     <Panel title={info.title} iconColor={colors.danger} icon={<Ionicons name={FAIL_ICON[info.icon]} size={34} color="#fff" />}>
       <PanelText>{info.msg}</PanelText>
       <View style={styles.actions}>
+        {info.extraMoves && have > 0 ? (
+          <GameButton variant="primary" label={`Use +${Math.min(RewardService.cfg.extraMovesPerUse, have)} Extra Moves (${have} left)`} icon={<RewardImage art="moves" width={24} />} onPress={onExtraMoves} />
+        ) : null}
         {info.canContinue ? (
           <GameButton variant="primary" label="Keep trying" icon={(c) => <Ionicons name="hand-right" size={20} color={c} />} onPress={onContinue} />
         ) : null}
@@ -120,6 +135,8 @@ const styles = StyleSheet.create({
   starBig: { width: 68, height: 68, marginBottom: 10 },
   starCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   note: { fontFamily: fonts.semibold, fontSize: 15, color: '#2fa868', textAlign: 'center', marginBottom: 10 },
+  coinsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: -4, marginBottom: 10 },
+  coinsText: { fontFamily: fonts.semibold, fontSize: 14, color: '#a87800' },
   stats: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'rgba(138,106,78,0.1)', borderRadius: 16, paddingVertical: 10, marginBottom: 10 },
   stat: { alignItems: 'center', gap: 1 },
   statLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.panelDim },

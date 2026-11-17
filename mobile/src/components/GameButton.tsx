@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { colors, fonts } from '../constants/theme';
 import { AudioService } from '../services/audio';
 
-export type ButtonVariant = 'primary' | 'plain' | 'danger' | 'teal' | 'pink' | 'gold' | 'violet' | 'orange';
+export type ButtonVariant = 'primary' | 'plain' | 'danger' | 'teal' | 'pink' | 'gold' | 'violet' | 'orange' | 'purple';
 
 const VARIANTS: Record<ButtonVariant, { top: string; bottom: string; edge: string; ink: string }> = {
   primary: { top: '#ff8466', bottom: colors.coral, edge: colors.coralDark, ink: '#fff' },
@@ -16,6 +16,7 @@ const VARIANTS: Record<ButtonVariant, { top: string; bottom: string; edge: strin
   gold: { top: '#ffd95c', bottom: colors.gold, edge: colors.goldDark, ink: '#4a3200' },
   violet: { top: '#9488ff', bottom: colors.violet, edge: colors.violetDark, ink: '#fff' },
   orange: { top: '#ffb36b', bottom: '#f08a2c', edge: '#b45e14', ink: '#fff' },
+  purple: { top: '#c49bff', bottom: '#9a5ee8', edge: '#6a34b0', ink: '#fff' },
 };
 
 interface Props {

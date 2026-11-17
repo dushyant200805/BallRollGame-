@@ -19,6 +19,7 @@
       this.mode = opts.mode || 'classic';
       this.moveLimit = opts.moveLimit || 0;  // 0 = unlimited
       this.timeLimit = opts.timeLimit || 0;  // seconds, 0 = none
+      this.bonusMoves = 0;                    // extra moves added from rewards (kept on restart)
       this.initial = Board.fromRows(level.rows);
       this.restart();
     }
@@ -37,6 +38,19 @@
     get connection() {
       if (!this._trace) this._trace = Pathfinding.trace(this.board);
       return this._trace;
+    }
+
+    /** Extra moves from rewards: raises the move limit and revives a level lost by running
+     *  out of moves. Returns false when the level has no move limit. */
+    addMoves(n) {
+      if (!this.moveLimit || !(n > 0)) return false;
+      this.moveLimit += n;
+      this.bonusMoves += n;
+      if (this.state === STATE.LOST && this.lostReason === 'moves') {
+        this.state = STATE.PLAYING;
+        this.lostReason = null;
+      }
+      return true;
     }
 
     get movesLeft() { return this.moveLimit ? Math.max(0, this.moveLimit - this.moves) : Infinity; }
@@ -131,6 +145,7 @@
         elapsed: this.elapsed,
         history: this.history.slice(),
         hintsUsed: this.hintsUsed,
+        bonusMoves: this.bonusMoves,
       };
     }
 
@@ -143,6 +158,8 @@
         this.elapsed = +snap.elapsed || 0;
         this.history = Array.isArray(snap.history) ? snap.history : [];
         this.hintsUsed = snap.hintsUsed | 0;
+        const bonus = snap.bonusMoves | 0;
+        if (this.moveLimit && bonus > this.bonusMoves) { this.moveLimit += bonus - this.bonusMoves; this.bonusMoves = bonus; }
         this.state = STATE.PLAYING;
         this._trace = null;
         return true;

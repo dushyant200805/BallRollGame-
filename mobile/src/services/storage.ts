@@ -6,6 +6,8 @@ import type { GameMode, LevelMode } from '../game/core/constants';
 import type { Snapshot } from '../game/core/session';
 import type { DailyCache } from '../game/levelManager';
 import { BALL_SKINS, DEFAULT_BALL, type BallSkin } from '../game/data/ballSkins';
+import { REWARDS_CONFIG } from '../game/data/rewardsConfig';
+import { ballOwned, defaultRewardState, type RewardState } from '../game/core/rewards';
 
 const KEY = 'ballroll.save.v1';
 const LEVEL_SETS = 2;
@@ -50,6 +52,7 @@ export interface SaveData {
   lastMode: GameMode;
   ball: string; // selected ball skin id
   ballsSeen: number; // unlocked-ball count when the collection was last opened ("New" badge)
+  rewards: RewardState; // coins, extra moves, gifts, themes (src/game/core/rewards.ts)
 }
 
 const defaults = (): SaveData => ({
@@ -72,6 +75,7 @@ const defaults = (): SaveData => ({
   lastMode: 'classic',
   ball: DEFAULT_BALL,
   ballsSeen: 1,
+  rewards: defaultRewardState(REWARDS_CONFIG),
 });
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -175,13 +179,13 @@ export const Storage = {
     Storage.persist();
   },
 
+  /** Unlocked by stars, or won from a gift. */
   isBallUnlocked(skin: BallSkin): boolean {
-    return Storage.allStars() >= skin.cost;
+    return ballOwned(data.rewards, skin, Storage.allStars());
   },
 
   unlockedBallCount(): number {
-    const stars = Storage.allStars();
-    return BALL_SKINS.filter((s) => stars >= s.cost).length;
+    return BALL_SKINS.filter((s) => Storage.isBallUnlocked(s)).length;
   },
 
   /** Selected ball; falls back to the default if it is no longer unlocked (e.g. after a reset). */
@@ -255,8 +259,10 @@ export const Storage = {
 
   resetProgress(): void {
     const settings = data.settings;
+    const day = data.rewards.day; // today's daily-gift count survives, so the free gift can't be re-opened
     data = defaults();
     data.settings = settings;
+    data.rewards.day = day;
     Storage.persist();
   },
 };

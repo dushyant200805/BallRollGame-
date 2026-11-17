@@ -13,6 +13,7 @@ import { BoardRenderer } from './render/boardRenderer';
 import { BallController } from './render/ball';
 import { Level, LevelManager, MODES } from './levelManager';
 import { Storage } from '../services/storage';
+import { RewardService } from '../services/rewards';
 import { AudioService } from '../services/audio';
 import { haptic } from '../services/haptics';
 
@@ -47,6 +48,8 @@ export interface HudState {
   ready: boolean;
   canUndo: boolean;
   controlsEnabled: boolean;
+  /** Extra Moves the player can add right now (0 = hide the button). */
+  extraMoves: number;
 }
 
 export interface WinInfo {
@@ -59,6 +62,8 @@ export interface WinInfo {
   note: string;
   hasNext: boolean;
   mode: GameMode;
+  coins: number; // coins earned for a first clear
+  giftReady: boolean; // this win completed a milestone
 }
 
 export interface FailInfo {
@@ -66,6 +71,7 @@ export interface FailInfo {
   msg: string;
   icon: 'broken' | 'time' | 'moves';
   canContinue: boolean;
+  extraMoves?: boolean; // offer Extra Moves (out of moves)
 }
 
 export type Overlay = null | { type: 'pause' } | { type: 'win'; info: WinInfo } | { type: 'fail'; info: FailInfo };
@@ -188,6 +194,7 @@ export class GameEngine {
 
   applySettings() {
     this.renderer.reduced = Storage.settings.animations === 'reduced';
+    this.renderer.tray = RewardService.theme().tray;
     this.applyBall();
     this.renderer.dirty = true;
   }
@@ -196,7 +203,7 @@ export class GameEngine {
   applyBall() {
     const skin = Storage.selectedBall();
     this.ball.skin = skin;
-    AudioService.setBall(skin.id);
+    AudioService.setBall(RewardService.rollSoundId()); // a gifted sound can replace the ball's own
     this.renderer.dirty = true;
   }
 
@@ -281,7 +288,7 @@ export class GameEngine {
       if (res.reason === 'limit') {
         AudioService.play('bump');
         haptic('warn');
-        this.toast('No moves left. Press Play to roll!');
+        this.toast(RewardService.extraMoves ? `No moves left. Tap +${RewardService.cfg.extraMovesPerUse} to use Extra Moves, or press Play.` : 'No moves left. Press Play to roll!');
       }
       return false;
     }
@@ -412,8 +419,11 @@ export class GameEngine {
     const time = Math.round(s.elapsed);
     let best: number;
     let isBest: boolean;
+    let firstClear: boolean;
+    const milestonesBefore = RewardService.milestone().available;
     if (this.mode === 'daily') {
       const prev = Storage.dailyResult(this.dailyKey!);
+      firstClear = !prev;
       const y = new Date();
       y.setDate(y.getDate() - 1);
       Storage.recordDaily(this.dailyKey!, { stars, moves: s.moves, time }, LevelManager.dailyKey(y));
@@ -422,6 +432,7 @@ export class GameEngine {
     } else {
       const r = Storage.recordWin(this.mode, this.number, { stars, moves: s.moves, time }, LevelManager.count(this.mode));
       isBest = r.isBest && !!r.previous;
+      firstClear = !r.previous;
       best = Storage.levelResult(this.mode, this.number)!.bestMoves;
     }
     const count = this.mode === 'daily' ? 0 : LevelManager.count(this.mode);
@@ -442,6 +453,8 @@ export class GameEngine {
       note,
       hasNext: this.mode !== 'daily' && this.number < count,
       mode: this.mode,
+      coins: firstClear ? RewardService.addCoins(RewardService.cfg.firstClearCoins) : 0,
+      giftReady: RewardService.milestone().available > milestonesBefore,
     };
     this.pushHud();
     this.later(() => this.setOverlay({ type: 'win', info }), this.renderer.reduced ? 150 : 650);
@@ -461,9 +474,29 @@ export class GameEngine {
           ? 'The clock ran out before the ball reached the goal. Give it another go!'
           : 'You used every move without completing the path. Try a different route!',
         canContinue: false,
+        extraMoves: reason === 'moves',
       },
     });
     this.pushHud();
+  }
+
+  /** Spend Extra Moves from the reward inventory (levels with a move limit only). */
+  useExtraMoves() {
+    const s = this.session;
+    if (!s || !s.moveLimit || s.state === 'rolling' || s.state === 'won') return;
+    if (s.state === 'lost' && s.lostReason !== 'moves') return;
+    const n = RewardService.takeExtraMoves();
+    if (!n) {
+      this.toast('No Extra Moves left. Open gifts to win more!');
+      return;
+    }
+    s.addMoves(n);
+    if (this.overlay && this.overlay.type === 'fail') this.setOverlay(null);
+    AudioService.play('connect');
+    this.toast(`+${n} moves added`);
+    this.lastFrame = Date.now();
+    this.refresh(false);
+    this.saveCurrent();
   }
 
   pause() {
@@ -560,6 +593,7 @@ export class GameEngine {
       ready: s.connection.ok,
       canUndo: s.history.length > 0,
       controlsEnabled: !this.rollingNow && s.state !== 'rolling',
+      extraMoves: limited ? Math.min(RewardService.cfg.extraMovesPerUse, RewardService.extraMoves) : 0,
     };
   }
 

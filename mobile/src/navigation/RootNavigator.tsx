@@ -9,6 +9,7 @@ import LevelsScreen from '../screens/LevelsScreen';
 import GameScreen from '../screens/GameScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import BallsScreen from '../screens/BallsScreen';
+import GiftsScreen from '../screens/GiftsScreen';
 import AboutScreen from '../screens/AboutScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +31,7 @@ export function RootNavigator() {
         <Stack.Screen name="Levels" component={LevelsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Game" component={GameScreen} options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="Balls" component={BallsScreen} options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="Gifts" component={GiftsScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
