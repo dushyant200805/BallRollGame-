@@ -256,6 +256,8 @@
     playPreview,
     stopPreview,
     get previewing() { return preview ? preview.id : null; },
+    /** 'running' once the browser has allowed audio (after a tap or click); for diagnostics. */
+    get contextState() { return ctx ? ctx.state : 'not-created'; },
     /** Id of the ball whose rolling sound is playing (null when silent). */
     get rolling() { return rollNodes ? rollNodes.id : null; },
     setSound(on) {

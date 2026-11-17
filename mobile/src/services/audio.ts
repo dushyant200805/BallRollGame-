@@ -77,10 +77,54 @@ const previewListeners = new Set<(id: string | null) => void>();
 
 const ramps = new Map<Audio.Sound, ReturnType<typeof setInterval>>();
 
+let healing: Promise<void> | null = null;
+
 function report(e: unknown) {
+  const msg = String(e);
+  // Android may recreate the activity (e.g. after a system "not responding" dialog) and
+  // release every native player while our JS objects survive. Reload instead of staying silent.
+  if (/Player does not exist|not loaded/i.test(msg)) {
+    void heal();
+    return;
+  }
   if (warned) return;
   warned = true;
-  console.warn('[audio] playback failed:', String(e));
+  console.warn('[audio] playback failed:', msg);
+}
+
+/** Forget every (dead) native player and load all sounds again. */
+function heal(): Promise<void> {
+  if (healing) return healing;
+  healing = (async () => {
+    console.log('[audio] native players were released; reloading sounds');
+    ramps.forEach((t) => clearInterval(t));
+    ramps.clear();
+    sounds.clear();
+    roll = null;
+    rollLoading = null;
+    rolling = false;
+    if (preview) clearTimeout(preview.timer);
+    preview = null;
+    notifyPreview();
+    loaded = false;
+    await AudioService.loadAll();
+    syncMusic();
+  })().finally(() => {
+    healing = null;
+  });
+  return healing;
+}
+
+/** True when the native players behind our Sound objects still exist. */
+async function playersAlive(): Promise<boolean> {
+  const probe = sounds.get('click');
+  if (!probe) return false;
+  try {
+    const st = await probe.getStatusAsync();
+    return st.isLoaded;
+  } catch {
+    return false;
+  }
 }
 
 const sfxVolume = () => vol.master * vol.sfx;
@@ -161,8 +205,12 @@ export const AudioService = {
     musicOn = settings.music;
     if (settings.volumes) Object.assign(vol, settings.volumes);
     if (ball) ballId = ball;
-    // Load once, even if the app root mounts again (e.g. the Android activity is recreated).
+    // Load once; if the app root mounts again (the Android activity was recreated), check
+    // that the native players survived and reload them if Android released them.
     if (!initPromise) initPromise = AudioService.loadAll();
+    else initPromise = initPromise.then(async () => {
+      if (!(await playersAlive())) await heal();
+    });
     return initPromise.then(syncMusic);
   },
 
@@ -325,7 +373,14 @@ export const AudioService = {
     if (!isForeground) {
       AudioService.stopRoll();
       AudioService.stopPreview();
+      syncMusic();
+      return;
     }
-    syncMusic();
+    // back in front: make sure Android did not release our players while we were away
+    if (loaded) {
+      void playersAlive().then((ok) => (ok ? syncMusic() : heal()));
+    } else {
+      syncMusic();
+    }
   },
 };

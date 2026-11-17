@@ -2,19 +2,28 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
 import { colors, fonts } from '../constants/theme';
+import { SunBurst } from './SunBurst';
+import { Storage } from '../services/storage';
 
 interface Props {
   icon?: React.ReactNode;
   iconColor?: string;
   title: string;
   children?: React.ReactNode;
+  /** Rotating sun rays behind the content (level complete), like the web `.win-burst`. */
+  burst?: boolean;
 }
 
 /** Modal dialog (port of the web .overlay/.panel): dimmed backdrop with a cream panel that pops in. */
-export function Panel({ icon, iconColor = colors.teal, title, children }: Props) {
+export function Panel({ icon, iconColor = colors.teal, title, children, burst }: Props) {
   return (
     <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={styles.backdrop} accessibilityViewIsModal>
       <Animated.View entering={ZoomIn.springify().damping(14).stiffness(180)} style={styles.panel}>
+        {burst ? (
+          <View style={styles.burstClip} pointerEvents="none">
+            <SunBurst animate={Storage.settings.animations === 'full'} />
+          </View>
+        ) : null}
         {icon ? <View style={[styles.icon, { backgroundColor: iconColor }]}>{icon}</View> : null}
         <Text style={styles.title} accessibilityRole="header">
           {title}
@@ -50,6 +59,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 6,
     borderBottomColor: '#e2c9a6',
   },
+  burstClip: { ...StyleSheet.absoluteFillObject, borderRadius: 26, overflow: 'hidden' },
   icon: {
     position: 'absolute',
     top: -34,

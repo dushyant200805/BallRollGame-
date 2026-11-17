@@ -41,7 +41,7 @@ export function WinOverlay({ info, onNext, onReplay, onMenu }: { info: WinInfo; 
 
   const daily = info.mode === 'daily';
   return (
-    <Panel title={info.title} iconColor={colors.gold} icon={<Ionicons name="trophy" size={32} color="#fff" />}>
+    <Panel burst title={info.title} iconColor={colors.gold} icon={<Ionicons name="trophy" size={32} color="#fff" />}>
       <View style={styles.stars} accessibilityLabel={`${info.stars} of 3 stars`}>
         {[0, 1, 2].map((i) => (
           <View key={i} style={[styles.starSlot, i === 1 && styles.starBig]}>
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   starSlot: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' },
   starBig: { width: 68, height: 68, marginBottom: 10 },
   starCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  note: { fontFamily: fonts.semibold, fontSize: 15, color: colors.coralDark, textAlign: 'center', marginBottom: 10 },
+  note: { fontFamily: fonts.semibold, fontSize: 15, color: '#2fa868', textAlign: 'center', marginBottom: 10 },
   stats: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'rgba(138,106,78,0.1)', borderRadius: 16, paddingVertical: 10, marginBottom: 10 },
   stat: { alignItems: 'center', gap: 1 },
   statLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.panelDim },
