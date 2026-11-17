@@ -423,3 +423,27 @@ body.reduced .ball-card .preview-btn.playing { animation: none; }
 #overlay-reward, #overlay-confirm { z-index: 30; }
 body.reduced .reward-gift, body.reduced .extra-moves-btn, body.reduced .btn-gift-ready { animation: none; }
 .btn:disabled { opacity: .5; cursor: default; filter: grayscale(.4); }
+
+/* ---- compact home: everything fits one screen on phones, tablets and desktops ---- */
+.home-inner { gap: clamp(8px, 2.1vh, 22px); }
+.logo-art { width: min(260px, 66vw, 25vh); }
+.title { font-size: clamp(34px, min(12vw, 6.4vh), 60px); margin-top: 0; }
+.tagline { font-size: clamp(12px, 1.8vh, 16px); margin-top: 4px; }
+.home-stars, .coin-count { font-size: 16px; padding-top: 4px; padding-bottom: 4px; }
+.coin-count img { width: 20px; height: 20px; }
+.btn-xl { min-height: clamp(56px, 8vh, 70px); max-width: 420px; font-size: clamp(22px, 3.2vh, 26px); padding: 8px 32px; }
+.btn-xl .bi { font-size: clamp(28px, 4vh, 32px); }
+.home-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 420px; }
+.home-grid .btn-tile,
+.home-grid .btn-balls,
+.home-grid .btn-gifts { grid-column: auto; flex-direction: column; gap: 3px; min-height: clamp(64px, 9.5vh, 86px); padding: 6px 4px; font-size: 15px; line-height: 1.1; text-align: center; border-radius: 20px; }
+.home-grid .btn-tile .bi { font-size: clamp(22px, 3.4vh, 28px); }
+.home-grid .balls-icon, .home-grid .gifts-icon { width: clamp(24px, 3.6vh, 32px); height: clamp(24px, 3.6vh, 32px); }
+.home-footer .icon-btn { width: 46px; height: 46px; }
+@media (min-width: 700px) {
+  .home-grid, .btn-xl { max-width: 480px; }
+  .home-grid .btn-tile { font-size: 16px; }
+}
+@media (max-height: 640px) {
+  .btn-tile { min-height: 60px; }
+}

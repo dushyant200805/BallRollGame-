@@ -23,14 +23,14 @@ import { CoinChip } from './GiftsScreen';
 export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   useStorageVersion();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const contentW = Math.min(width - 32, 440);
 
   const target = playTarget();
   const playSub = target.resume ? `Continue level ${target.number}` : target.allDone ? 'All levels complete!' : `Level ${target.number}`;
   const dailyDone = !!Storage.dailyResult(LevelManager.dailyKey());
   const ball = Storage.selectedBall();
-  const ballPic = React.useMemo(() => ballPicture(ball, 40), [ball]);
+  const ballPic = React.useMemo(() => ballPicture(ball, 30), [ball]);
   const newBalls = Storage.unlockedBallCount() > (Storage.data.ballsSeen || 1);
   const s = Storage.settings;
   const giftsReady = RewardService.readyCount();
@@ -56,8 +56,8 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         bounces={false}
       >
         <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center' }}>
-          <Logo width={Math.min(250, contentW * 0.75)} />
-          <Text style={styles.title} accessibilityRole="header">
+          <Logo width={Math.min(230, contentW * 0.66, height * 0.21)} />
+          <Text style={[styles.title, { fontSize: Math.max(34, Math.min(48, height * 0.055)) }]} accessibilityRole="header">
             Ball <Text style={{ color: colors.gold }}>Roll</Text>
           </Text>
           <Text style={styles.tag}>SLIDE · CONNECT · ROLL</Text>
@@ -81,48 +81,20 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
             onPress={() => navigation.navigate('Game', { mode: 'classic', number: target.number, resume: target.resume })}
           />
           <View style={styles.grid}>
-            <GameButton style={styles.cell} variant="teal" size="lg" label="Levels" icon={(ink) => <Ionicons name="grid" size={22} color={ink} />}
+            <Tile variant="teal" label="Levels" icon={<Ionicons name="grid" size={24} color="#fff" />}
               onPress={() => navigation.navigate('Levels', { mode: Storage.data.lastMode === 'daily' ? 'classic' : Storage.data.lastMode })} />
-            <GameButton style={styles.cell} variant="pink" size="lg" label="Daily" icon={(ink) => <Ionicons name="calendar" size={22} color={ink} />}
-              onPress={() => navigation.navigate('Game', { mode: 'daily' })}>
-              <View style={styles.row}>
-                <Ionicons name="calendar" size={22} color="#fff" />
-                <Text style={styles.tileLabel}>Daily</Text>
-              </View>
-              <View style={[styles.badge, dailyDone && styles.badgeDone]}>
-                <Text style={styles.badgeText}>{dailyDone ? '✓ Done' : 'New'}</Text>
-              </View>
-            </GameButton>
-            <GameButton style={styles.cell} variant="gold" size="lg" label="Challenge" icon={(ink) => <Ionicons name="flash" size={22} color={ink} />}
+            <Tile variant="pink" label="Daily" icon={<Ionicons name="calendar" size={24} color="#fff" />} badge={dailyDone ? '✓ Done' : 'New'} badgeDone={dailyDone}
+              onPress={() => navigation.navigate('Game', { mode: 'daily' })} />
+            <Tile variant="gold" label="Challenge" ink="#4a3200" icon={<Ionicons name="flash" size={24} color="#4a3200" />}
               onPress={() => navigation.navigate('Levels', { mode: 'challenge' })} />
-            <GameButton style={styles.cell} variant="violet" size="lg" label="Time Trial" icon={(ink) => <Ionicons name="stopwatch" size={22} color={ink} />}
+            <Tile variant="violet" label="Time Trial" icon={<Ionicons name="stopwatch" size={24} color="#fff" />}
               onPress={() => navigation.navigate('Levels', { mode: 'timetrial' })} />
-            <GameButton style={styles.cell} variant="orange" size="lg" accessibilityLabel={`Ball Collection${newBalls ? ', new balls unlocked' : ''}`}
-              onPress={() => navigation.navigate('Balls')}>
-              <View style={styles.row}>
-                <Canvas style={{ width: 36, height: 36 }}>
-                  <Picture picture={ballPic} />
-                </Canvas>
-                <Text style={styles.tileLabelSm}>{'Ball\nCollection'}</Text>
-              </View>
-              {newBalls ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>New</Text>
-                </View>
-              ) : null}
-            </GameButton>
-            <GameButton style={styles.cell} variant="purple" size="lg" accessibilityLabel={`Gifts and Rewards${giftsReady ? `, ${giftsReady} ready to open` : ''}`}
-              onPress={() => navigation.navigate('Gifts')}>
-              <View style={styles.row}>
-                <RewardImage art="gift" width={36} />
-                <Text style={styles.tileLabelSm}>{'Gifts &\nRewards'}</Text>
-              </View>
-              {giftsReady ? (
-                <View style={[styles.badge, styles.badgeGift]}>
-                  <Text style={[styles.badgeText, { color: '#fff' }]}>{giftsReady}</Text>
-                </View>
-              ) : null}
-            </GameButton>
+            <Tile variant="orange" label="Balls" a11y={`Ball Collection${newBalls ? ', new balls unlocked' : ''}`} badge={newBalls ? 'New' : undefined}
+              icon={<Canvas style={{ width: 30, height: 30 }}><Picture picture={ballPic} /></Canvas>}
+              onPress={() => navigation.navigate('Balls')} />
+            <Tile variant="purple" label="Gifts" a11y={`Gifts and Rewards${giftsReady ? `, ${giftsReady} ready to open` : ''}`}
+              badge={giftsReady ? String(giftsReady) : undefined} badgeGift icon={<RewardImage art="gift" width={30} />}
+              onPress={() => navigation.navigate('Gifts')} />
           </View>
         </View>
 
@@ -136,6 +108,35 @@ export default function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   );
 }
 
+/** Home tile: icon over label, three per row (like the web home grid). */
+function Tile(p: {
+  variant: React.ComponentProps<typeof GameButton>['variant'];
+  label: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+  ink?: string;
+  a11y?: string;
+  badge?: string;
+  badgeDone?: boolean;
+  badgeGift?: boolean;
+}) {
+  return (
+    <GameButton style={styles.cell} variant={p.variant} size="lg" accessibilityLabel={p.a11y || p.label} onPress={p.onPress}>
+      <View style={styles.tile}>
+        {p.icon}
+        <Text style={[styles.tileLabel, p.ink ? { color: p.ink } : null]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {p.label}
+        </Text>
+      </View>
+      {p.badge ? (
+        <View style={[styles.badge, p.badgeDone && styles.badgeDone, p.badgeGift && styles.badgeGift]}>
+          <Text style={[styles.badgeText, p.badgeGift && { color: '#fff' }]}>{p.badge}</Text>
+        </View>
+      ) : null}
+    </GameButton>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, gap: 14 },
@@ -144,10 +145,11 @@ const styles = StyleSheet.create({
   stars: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   starsText: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
-  cell: { width: '48.5%' },
+  cell: { width: '31.5%' },
+  tile: { alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 8 },
   wide: { width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  tileLabel: { fontFamily: fonts.bold, fontSize: 18, color: '#fff' },
+  tileLabel: { fontFamily: fonts.bold, fontSize: 15, color: '#fff' },
   tileLabelSm: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 17, color: '#fff' },
   walletRow: { flexDirection: 'row', gap: 10 },
   badgeGift: { backgroundColor: colors.coral },
