@@ -99,9 +99,13 @@
   }
 
   // ---- daily gifts -------------------------------------------------------------
-  /** Start a fresh counter when the date changes. */
+  /** A new day only starts when the date moves FORWARD (keys are YYYY-MM-DD, so string order is
+   *  date order). Setting the device clock back keeps today's counts, so gifts can't be farmed. */
+  const isNewDay = (stored, todayKey) => !stored || !stored.key || todayKey > stored.key;
+
+  /** Start a fresh counter when a new day begins. */
   function rollDay(state, todayKey) {
-    if (!state.day || state.day.key !== todayKey) state.day = { key: todayKey, opened: 0 };
+    if (isNewDay(state.day, todayKey)) state.day = { key: todayKey, opened: 0 };
     return state.day;
   }
 
@@ -149,7 +153,7 @@
 
   /** Coin ads left today: {left, max, coins}; max 0 = unlimited. */
   function adCoinsStatus(state, cfg, todayKey) {
-    if (!state.adDay || state.adDay.key !== todayKey) state.adDay = { key: todayKey, count: 0 };
+    if (isNewDay(state.adDay, todayKey)) state.adDay = { key: todayKey, count: 0 };
     const max = cfg.shop.adsPerDay || 0;
     return { max, left: max ? Math.max(0, max - state.adDay.count) : 99, coins: cfg.shop.adCoins };
   }

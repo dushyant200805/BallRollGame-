@@ -17,6 +17,8 @@
   let settingsReturn = null;
   let adResolve = null;
   let adTimer = null;
+  let adLeft = 0;
+  let adLoadTimer = null;
   let rewardShown = null; // history entry shown in the reward dialog
 
   const UI = {
@@ -92,6 +94,8 @@
         case 'reward-use': UI.useReward(); break;
         case 'ad-close': UI.closeAd(false); break;
         case 'ad-claim': UI.closeAd(true); break;
+        case 'ad-retry': UI.loadAd(); break;
+        case 'ad-moves': E.watchAdForMoves(); break;
         case 'theme-use': UI.useTheme(el.dataset.theme); break;
         case 'sound-use': UI.useSound(el.dataset.sound); break;
         case 'use-moves': E.useExtraMoves(); break;
@@ -248,7 +252,7 @@
       let res;
       if (next.kind === 'ad') {
         res = await RM.openDailyWithAd(() => UI.showAd());
-        if (!res.ok && res.reason === 'ad') UI.toast('Watch the whole ad to get the gift.');
+        if (!res.ok && res.reason === 'ad') UI.toast(UI.lastAdFailed ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the gift.');
       } else if (next.kind === 'coins') {
         if (RM.coins < next.cost) { UI.toast('Not enough coins. This gift costs ' + next.cost + ' coins.'); return; }
         const yes = await UI.confirm('Open another gift?',
@@ -262,36 +266,72 @@
     },
 
     openMilestoneGift() {
+      if (rewardShown || $('#overlay-reward').classList.contains('open')) return; // double tap: one gift per tap
       const entry = BP.RewardManager.openMilestone();
       $('#btn-win-gift').hidden = true;
       if (UI.currentScreen === 'gifts') UI.renderGifts();
       if (entry) UI.showReward(entry);
     },
 
-    /** Placeholder rewarded ad: resolves true only when it was watched to the end.
-     *  Replace with an ad network SDK later; RewardManager only needs this promise. */
+    /** Placeholder rewarded ad (simulated ad lifecycle: load -> play -> reward, or load error).
+     *  Resolves true only when it was watched to the end. UI.lastAdFailed tells callers whether it
+     *  failed to load. Replace with an ad network SDK later; callers only need this promise. */
     showAd() {
-      let left = BP.RewardsConfig.ad.seconds;
-      const timer = $('#ad-timer');
-      const claim = $('#btn-ad-claim');
-      claim.disabled = true;
-      timer.textContent = 'Reward in ' + left + 's';
+      if (adResolve) return Promise.resolve(false); // one ad at a time
+      UI.lastAdFailed = false;
       UI.openOverlay('ad');
-      clearInterval(adTimer);
-      adTimer = setInterval(() => {
-        left -= 1;
-        if (left > 0) { timer.textContent = 'Reward in ' + left + 's'; return; }
-        clearInterval(adTimer);
-        timer.textContent = 'Reward unlocked';
-        claim.disabled = false;
-        claim.focus();
-      }, 1000);
+      UI.loadAd();
       return new Promise((resolve) => { adResolve = resolve; });
     },
 
-    closeAd(claimed) {
-      if (claimed && $('#btn-ad-claim').disabled) return;
+    adMode() {
+      const q = /[?&]ad=(ok|fail|offline)/.exec(location.search);
+      return q ? q[1] : BP.RewardsConfig.ad.simulate || 'ok';
+    },
+
+    loadAd() {
+      const cfg = BP.RewardsConfig.ad;
       clearInterval(adTimer);
+      clearTimeout(adLoadTimer);
+      $('#ad-loading').hidden = false;
+      $('#ad-error').hidden = true;
+      $('#ad-poster').hidden = true;
+      $('#btn-ad-claim').hidden = true;
+      $('#ad-timer').textContent = 'Loading…';
+      adLoadTimer = setTimeout(() => {
+        $('#ad-loading').hidden = true;
+        const mode = UI.adMode();
+        if (mode !== 'ok' || navigator.onLine === false) {
+          UI.lastAdFailed = true;
+          $('#ad-error').hidden = false;
+          $('#ad-error-msg').textContent = mode === 'offline' || navigator.onLine === false
+            ? 'No internet connection. Connect and try again.' : 'Ad not available right now. Please try again.';
+          $('#ad-timer').textContent = 'Ad failed to load';
+          return;
+        }
+        UI.lastAdFailed = false;
+        $('#ad-poster').hidden = false;
+        const claim = $('#btn-ad-claim');
+        claim.hidden = false;
+        claim.disabled = true;
+        adLeft = cfg.seconds;
+        $('#ad-timer').textContent = 'Reward in ' + adLeft + 's';
+        adTimer = setInterval(() => {
+          if (document.hidden) return; // the ad pauses while the game is in the background
+          adLeft -= 1;
+          if (adLeft > 0) { $('#ad-timer').textContent = 'Reward in ' + adLeft + 's'; return; }
+          clearInterval(adTimer);
+          $('#ad-timer').textContent = 'Reward unlocked';
+          claim.disabled = false;
+          claim.focus();
+        }, 1000);
+      }, cfg.loadMs || 0);
+    },
+
+    closeAd(claimed) {
+      if (claimed && ($('#btn-ad-claim').disabled || $('#btn-ad-claim').hidden)) return;
+      clearInterval(adTimer);
+      clearTimeout(adLoadTimer);
       UI.closeOverlay('ad');
       const r = adResolve;
       adResolve = null;
@@ -472,7 +512,7 @@
       if (res.ok) {
         AudioManager.play('star', 2);
         UI.toast('+' + res.entry.amount + ' coins!');
-      } else if (res.reason === 'ad') UI.toast('Watch the whole ad to get the coins.');
+      } else if (res.reason === 'ad') UI.toast(UI.lastAdFailed ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the coins.');
       else if (res.reason === 'limit') UI.toast('No more coin ads today. Come back tomorrow!');
       if (UI.currentScreen === 'balls') UI.renderBalls();
     },
@@ -694,7 +734,11 @@
       });
     },
 
-    showFail({ title, msg, canContinue, icon, extraMoves }) {
+    showFail({ title, msg, canContinue, icon, extraMoves, adMoves }) {
+      const am = $('#btn-fail-admoves');
+      am.hidden = !adMoves;
+      am.querySelector('span').textContent = 'Watch ad: +' + BP.RewardsConfig.extraMovesAd.moves + ' moves';
+      if (adMoves) msg += ' Watch a short ad to get +' + BP.RewardsConfig.extraMovesAd.moves + ' moves and keep this board.';
       const fm = $('#btn-fail-moves');
       const have = BP.RewardManager.extraMoves;
       fm.hidden = !extraMoves || !have;

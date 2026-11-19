@@ -72,6 +72,7 @@ export interface FailInfo {
   icon: 'broken' | 'time' | 'moves';
   canContinue: boolean;
   extraMoves?: boolean; // offer Extra Moves (out of moves)
+  adMoves?: boolean; // offer a rewarded ad for extra moves
 }
 
 export type Overlay = null | { type: 'pause' } | { type: 'win'; info: WinInfo } | { type: 'fail'; info: FailInfo };
@@ -111,6 +112,8 @@ export class GameEngine {
   private drag: DragState | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private rollingNow = false;
+  private adMovesUsed = 0; // rewarded-ad move refills used on this level
+  private lastExtraUse = 0;
 
   constructor(picture: SharedValue<SkPicture>, onUi: (p: UiPatch) => void) {
     this.picture = picture;
@@ -183,6 +186,7 @@ export class GameEngine {
     }
     this.rollingNow = false;
     this.drag = null;
+    this.adMovesUsed = 0;
     this.applySettings();
     this.ball.attach(this.session);
     this.renderer.attach(this.session, this.ball);
@@ -475,6 +479,7 @@ export class GameEngine {
           : 'You used every move without completing the path. Try a different route!',
         canContinue: false,
         extraMoves: reason === 'moves',
+        adMoves: reason === 'moves' && this.adMovesUsed < RewardService.cfg.extraMovesAd.perLevel,
       },
     });
     this.pushHud();
@@ -482,6 +487,9 @@ export class GameEngine {
 
   /** Spend Extra Moves from the reward inventory (levels with a move limit only). */
   useExtraMoves() {
+    const now = Date.now();
+    if (now - this.lastExtraUse < 600) return; // a double tap must not spend twice
+    this.lastExtraUse = now;
     const s = this.session;
     if (!s || !s.moveLimit || s.state === 'rolling' || s.state === 'won') return;
     if (s.state === 'lost' && s.lostReason !== 'moves') return;
@@ -491,12 +499,39 @@ export class GameEngine {
       return;
     }
     s.addMoves(n);
+    this.ball.attach(s); // ball back on the start tile
+    this.renderer.clearFail();
+    this.renderer.dirty = true;
     if (this.overlay && this.overlay.type === 'fail') this.setOverlay(null);
     AudioService.play('connect');
     this.toast(`+${n} moves added`);
     this.lastFrame = Date.now();
     this.refresh(false);
     this.saveCurrent();
+  }
+
+  /** True while a rewarded ad for moves may be offered (out of moves, not used up on this level). */
+  canAdMoves(): boolean {
+    const s = this.session;
+    return !!s && !!s.moveLimit && s.state === 'lost' && s.lostReason === 'moves' && this.adMovesUsed < RewardService.cfg.extraMovesAd.perLevel;
+  }
+
+  /** Grant the moves for a rewarded ad that was watched to the end. */
+  grantAdMoves(): boolean {
+    if (!this.canAdMoves()) return false;
+    const n = RewardService.cfg.extraMovesAd.moves;
+    this.adMovesUsed += 1;
+    this.session!.addMoves(n);
+    this.ball.attach(this.session!);
+    this.renderer.clearFail();
+    this.renderer.dirty = true;
+    if (this.overlay && this.overlay.type === 'fail') this.setOverlay(null);
+    AudioService.play('connect');
+    this.toast(`+${n} moves added. Keep going!`);
+    this.lastFrame = Date.now();
+    this.refresh(false);
+    this.saveCurrent();
+    return true;
   }
 
   pause() {

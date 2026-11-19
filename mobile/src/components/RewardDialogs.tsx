@@ -1,7 +1,7 @@
 /** Reward dialogs: the gift-opening reveal, the placeholder rewarded ad and the
  *  "spend coins?" confirmation (ports of the web #overlay-reward / #overlay-ad / #overlay-confirm). */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut, ZoomIn, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Canvas, Picture } from '@shopify/react-native-skia';
@@ -114,18 +114,37 @@ export function applyRewardNow(entry: HistoryEntry): string {
 }
 
 /** Placeholder rewarded ad (stands in for an ad network). `onDone(true)` only after the full ad. */
-export function AdPlaceholder({ onDone }: { onDone: (watched: boolean) => void }) {
-  const [left, setLeft] = useState(RewardService.cfg.ad.seconds);
+export function AdPlaceholder({ onDone }: { onDone: (watched: boolean, failed?: boolean) => void }) {
+  const cfg = RewardService.cfg.ad;
+  const [phase, setPhase] = useState<'loading' | 'error' | 'playing'>('loading');
+  const [left, setLeft] = useState(cfg.seconds);
+  const [attempt, setAttempt] = useState(0);
   const done = useRef(false);
   const finish = (watched: boolean) => {
     if (done.current) return;
     done.current = true;
-    onDone(watched);
+    onDone(watched, phase === 'error');
   };
+  // simulated ad lifecycle: load -> play (or load error with retry)
   useEffect(() => {
-    const t = setInterval(() => setLeft((n) => (n > 0 ? n - 1 : 0)), 1000);
+    setPhase('loading');
+    const t = setTimeout(() => {
+      if (cfg.simulate !== 'ok') setPhase('error');
+      else {
+        setLeft(cfg.seconds);
+        setPhase('playing');
+      }
+    }, cfg.loadMs || 0);
+    return () => clearTimeout(t);
+  }, [attempt, cfg.loadMs, cfg.seconds, cfg.simulate]);
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const t = setInterval(() => {
+      if (AppState.currentState !== 'active') return; // the ad pauses while the app is in the background
+      setLeft((n) => (n > 0 ? n - 1 : 0));
+    }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [phase]);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       finish(false);
@@ -141,13 +160,34 @@ export function AdPlaceholder({ onDone }: { onDone: (watched: boolean) => void }
           <View style={styles.adTag}>
             <Text style={styles.adTagText}>Ad</Text>
           </View>
-          <Text style={styles.adTimer}>{left > 0 ? `Reward in ${left}s` : 'Reward unlocked'}</Text>
+          <Text style={styles.adTimer}>{phase === 'loading' ? 'Loading…' : phase === 'error' ? 'Ad failed to load' : left > 0 ? `Reward in ${left}s` : 'Reward unlocked'}</Text>
           <GameButton style={styles.adClose} label="" accessibilityLabel="Close ad" icon={<Ionicons name="close" size={20} color={colors.panelInk} />} onPress={() => finish(false)} />
         </View>
-        <View style={{ alignSelf: 'center' }}>
-          <Poster center art="adPoster" width={300} height={467} title="Your Ad Here" sub="Test rewarded ad" />
-        </View>
-        <GameButton variant="primary" label="Claim reward" disabled={left > 0} onPress={() => finish(true)} />
+        {phase === 'playing' ? (
+          <>
+            <View style={{ alignSelf: 'center' }}>
+              <Poster center art="adPoster" width={300} height={467} title="Your Ad Here" sub="Test rewarded ad" />
+              <Text style={styles.adInstall}>INSTALL</Text>
+            </View>
+            <GameButton variant="primary" label="Claim reward" disabled={left > 0} onPress={() => finish(true)} />
+          </>
+        ) : (
+          <View style={styles.adState}>
+            {phase === 'loading' ? (
+              <>
+                <ActivityIndicator size="large" color={colors.coral} />
+                <Text style={styles.adStateText}>Loading ad…</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="cloud-offline" size={44} color={colors.coral} />
+                <Text style={styles.adStateText}>Ad not available right now. Please try again.</Text>
+                <GameButton variant="primary" label="Try again" icon={(c) => <Ionicons name="refresh" size={20} color={c} />} onPress={() => setAttempt((n) => n + 1)} />
+              </>
+            )}
+          </View>
+        )}
+        <Text style={styles.adNote}>Test ad (simulated). No real advertising is shown.</Text>
       </View>
     </Animated.View>
   );
@@ -192,4 +232,8 @@ const styles = StyleSheet.create({
   adTagText: { fontFamily: fonts.bold, fontSize: 13, color: '#5a3d00' },
   adTimer: { fontFamily: fonts.medium, fontSize: 15, color: colors.inkDim, flex: 1 },
   adClose: { width: 50 },
+  adInstall: { position: 'absolute', left: 0, right: 0, top: 467 * (510 / 560), textAlign: 'center', fontFamily: fonts.bold, fontSize: 15, color: '#fff' },
+  adState: { minHeight: 320, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 20 },
+  adStateText: { fontFamily: fonts.medium, fontSize: 16, color: colors.inkDim, textAlign: 'center' },
+  adNote: { fontFamily: fonts.medium, fontSize: 12, color: colors.inkDim, textAlign: 'center' },
 });

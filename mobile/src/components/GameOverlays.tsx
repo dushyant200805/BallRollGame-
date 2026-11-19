@@ -100,12 +100,16 @@ function Stat({ icon, label, value }: { icon: React.ComponentProps<typeof Ionico
 
 const FAIL_ICON = { broken: 'alert-circle', time: 'hourglass', moves: 'hand-left' } as const;
 
-export function FailOverlay({ info, onContinue, onRetry, onLevels, showLevels, onExtraMoves }: { info: FailInfo; onContinue: () => void; onRetry: () => void; onLevels: () => void; showLevels: boolean; onExtraMoves: () => void }) {
+export function FailOverlay({ info, onContinue, onRetry, onLevels, showLevels, onExtraMoves, onAdMoves }: { info: FailInfo; onContinue: () => void; onRetry: () => void; onLevels: () => void; showLevels: boolean; onExtraMoves: () => void; onAdMoves: () => void }) {
+  const adN = RewardService.cfg.extraMovesAd.moves;
   const have = RewardService.extraMoves;
   return (
     <Panel title={info.title} iconColor={colors.danger} icon={<Ionicons name={FAIL_ICON[info.icon]} size={34} color="#fff" />}>
-      <PanelText>{info.msg}</PanelText>
+      <PanelText>{info.adMoves ? `${info.msg} Watch a short ad to get +${adN} moves and keep this board.` : info.msg}</PanelText>
       <View style={styles.actions}>
+        {info.adMoves ? (
+          <GameButton variant="primary" label={`Watch ad: +${adN} moves`} icon={(c) => <Ionicons name="play-circle" size={20} color={c} />} onPress={onAdMoves} />
+        ) : null}
         {info.extraMoves && have > 0 ? (
           <GameButton variant="primary" label={`Use +${Math.min(RewardService.cfg.extraMovesPerUse, have)} Extra Moves (${have} left)`} icon={<RewardImage art="moves" width={24} />} onPress={onExtraMoves} />
         ) : null}

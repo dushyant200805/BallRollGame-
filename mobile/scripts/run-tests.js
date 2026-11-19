@@ -177,6 +177,14 @@ console.log('Rewards');
     }
     assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
   });
+  test('clock moved back keeps daily gift and ad counts', () => {
+    const st = R.defaultRewardState(cfg);
+    R.dailyNext(st, cfg, '2026-11-19'); st.day.opened = 2;
+    R.adCoinsStatus(st, cfg, '2026-11-19'); st.adDay.count = 2;
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-01').opened, 2);
+    assert.strictEqual(R.adCoinsStatus(st, cfg, '2026-11-01').left, 0);
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-20').kind, 'ad');
+  });
   test('extra moves revive an out-of-moves loss', () => {
     const s = new GameSession(tiny, { mode: 'challenge', moveLimit: 1 });
     s.moves = 1;

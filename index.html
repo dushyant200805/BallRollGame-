@@ -213,6 +213,7 @@
         <h2 id="fail-title">Path broken</h2>
         <p id="fail-msg"></p>
         <div class="panel-actions">
+          <button class="btn btn-primary" data-action="ad-moves" id="btn-fail-admoves" hidden><i class="bi bi-play-btn-fill"></i><span>Watch ad: +3 moves</span></button>
           <button class="btn btn-primary" data-action="use-moves" id="btn-fail-moves" hidden><img class="btn-img" src="assets/rewards/moves.svg" alt=""><span></span></button>
           <button class="btn btn-primary" data-action="fail-continue" id="btn-fail-continue"><i class="bi bi-hand-index-thumb-fill"></i>Keep trying</button>
           <button class="btn" data-action="fail-retry"><i class="bi bi-arrow-repeat"></i>Restart level</button>
@@ -280,8 +281,12 @@
       <div class="ad-frame">
         <div class="ad-top"><span class="ad-tag">Ad</span><span id="ad-timer">Reward in 5s</span>
           <button class="ad-close" data-action="ad-close" aria-label="Close ad"><i class="bi bi-x-lg"></i></button></div>
-        <img class="ad-poster" src="assets/rewards/ad-poster.svg" alt="Test advertisement">
+        <div class="ad-state" id="ad-loading"><div class="spinner"></div><p>Loading ad…</p></div>
+        <div class="ad-state" id="ad-error" hidden><i class="bi bi-wifi-off"></i><p id="ad-error-msg">Ad not available right now.</p>
+          <button class="btn btn-primary" data-action="ad-retry"><i class="bi bi-arrow-repeat"></i>Try again</button></div>
+        <img class="ad-poster" id="ad-poster" src="assets/rewards/ad-poster.svg" alt="Test advertisement" hidden>
         <button class="btn btn-primary" data-action="ad-claim" id="btn-ad-claim" disabled>Claim reward</button>
+        <p class="ad-note">Test ad (simulated). No real advertising is shown.</p>
       </div>
     </div>
 

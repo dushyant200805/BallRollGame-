@@ -20,7 +20,7 @@ import { AudioService } from '../services/audio';
 import { useStorageVersion } from '../hooks/useStorage';
 import type { ScreenProps } from '../navigation/types';
 import { RewardService } from '../services/rewards';
-import { RewardReveal, applyRewardNow } from '../components/RewardDialogs';
+import { AdPlaceholder, RewardReveal, applyRewardNow } from '../components/RewardDialogs';
 import type { HistoryEntry } from '../game/core/rewards';
 
 const EMPTY_PICTURE = (() => {
@@ -40,6 +40,8 @@ export default function GameScreen({ navigation, route }: ScreenProps<'Game'>) {
   const [loading, setLoading] = useState(false);
   const [side, setSide] = useState(0);
   const [reveal, setReveal] = useState<HistoryEntry | null>(null);
+  const [adForMoves, setAdForMoves] = useState(false);
+  const giftLock = useRef(false);
 
   const onUi = useCallback((p: UiPatch) => {
     if (p.hud) setHud(p.hud);
@@ -224,19 +226,39 @@ export default function GameScreen({ navigation, route }: ScreenProps<'Game'>) {
         />
       ) : null}
       {overlay?.type === 'win' ? (
-        <WinOverlay info={overlay.info} onNext={next} onReplay={replay} onMenu={leaveToMenu} onGift={() => setReveal(RewardService.openMilestone())} />
+        <WinOverlay info={overlay.info} onNext={next} onReplay={replay} onMenu={leaveToMenu} onGift={() => {
+            if (giftLock.current || reveal) return; // double tap: one gift per tap
+            const e = RewardService.openMilestone();
+            if (e) {
+              giftLock.current = true;
+              setReveal(e);
+            }
+          }} />
       ) : null}
       {overlay?.type === 'fail' ? (
-        <FailOverlay info={overlay.info} showLevels={!isDaily} onContinue={() => engine.dismissFail()} onRetry={() => engine.restart()} onLevels={leaveToMenu} onExtraMoves={() => engine.useExtraMoves()} />
+        <FailOverlay info={overlay.info} showLevels={!isDaily} onContinue={() => engine.dismissFail()} onRetry={() => engine.restart()} onLevels={leaveToMenu} onExtraMoves={() => engine.useExtraMoves()} onAdMoves={() => { if (engine.canAdMoves()) setAdForMoves(true); }} />
       ) : null}
       {reveal ? (
         <RewardReveal
           entry={reveal}
-          onClose={() => setReveal(null)}
+          onClose={() => {
+            giftLock.current = false;
+            setReveal(null);
+          }}
           onUse={() => {
             onUi({ toast: applyRewardNow(reveal) });
+            giftLock.current = false;
             setReveal(null);
             engine.applySettings();
+          }}
+        />
+      ) : null}
+      {adForMoves ? (
+        <AdPlaceholder
+          onDone={(watched, failed) => {
+            setAdForMoves(false);
+            if (watched) engine.grantAdMoves();
+            else onUi({ toast: failed ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the moves.' });
           }}
         />
       ) : null}

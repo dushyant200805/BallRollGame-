@@ -34,6 +34,7 @@ export default function GiftsScreen({ navigation }: ScreenProps<'Gifts'>) {
   const innerW = Math.min(width, 640) - 32;
   const [busy, setBusy] = useState(RewardService.busy);
   const [ad, setAd] = useState<((watched: boolean) => void) | null>(null);
+  const adFailed = React.useRef(false);
   const [confirmCost, setConfirmCost] = useState<number | null>(null);
   const [reveal, setReveal] = useState<HistoryEntry | null>(null);
   const [playing, setPlaying] = useState<string | null>(AudioService.previewing);
@@ -65,7 +66,7 @@ export default function GiftsScreen({ navigation }: ScreenProps<'Gifts'>) {
       const res = await RewardService.openDailyWithAd(showAd);
       setAd(null);
       if (res.ok) setReveal(res.entry);
-      else if (res.reason === 'ad') say('Watch the whole ad to get the gift.');
+      else if (res.reason === 'ad') say(adFailed.current ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the gift.');
     } else if (next.kind === 'coins') {
       if (coins < next.cost) say(`Not enough coins. This gift costs ${next.cost} coins.`);
       else setConfirmCost(next.cost);
@@ -81,9 +82,14 @@ export default function GiftsScreen({ navigation }: ScreenProps<'Gifts'>) {
     else say(res.reason === 'coins' ? 'Not enough coins.' : 'The price changed. Please try again.');
   };
 
+  const giftLock = React.useRef(false);
   const openMilestone = () => {
+    if (giftLock.current || reveal) return; // double tap: one gift per tap
     const e = RewardService.openMilestone();
-    if (e) setReveal(e);
+    if (e) {
+      giftLock.current = true;
+      setReveal(e);
+    }
   };
 
   // ---- cosmetics -------------------------------------------------------------------
@@ -220,14 +226,18 @@ export default function GiftsScreen({ navigation }: ScreenProps<'Gifts'>) {
       {reveal ? (
         <RewardReveal
           entry={reveal}
-          onClose={() => setReveal(null)}
+          onClose={() => {
+            giftLock.current = false;
+            setReveal(null);
+          }}
           onUse={() => {
             say(applyRewardNow(reveal));
+            giftLock.current = false;
             setReveal(null);
           }}
         />
       ) : null}
-      {ad ? <AdPlaceholder onDone={(w) => ad(w)} /> : null}
+      {ad ? <AdPlaceholder onDone={(w, f) => { adFailed.current = !!f; ad(w); }} /> : null}
       <Toast message={toast.msg} id={toast.id} bottom={insets.bottom + 24} />
     </View>
   );

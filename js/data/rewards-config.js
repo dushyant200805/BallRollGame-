@@ -50,7 +50,14 @@
     },
 
     /** Placeholder rewarded ad (stands in for an ad network until one is integrated). */
-    ad: { seconds: 5 },
+    ad: {
+      seconds: 5,       // length of the placeholder ad
+      loadMs: 900,      // simulated loading time
+      simulate: 'ok',   // 'ok' | 'fail' | 'offline' (QA: web also accepts ?ad=fail / ?ad=offline)
+    },
+
+    /** Out of moves: watch a rewarded ad for extra moves (limited per level attempt). */
+    extraMovesAd: { moves: 3, perLevel: 1 },
 
     /** How many opened gifts the history keeps. */
     historyLimit: 30,

@@ -105,6 +105,7 @@
       requestAnimationFrame(() => this.renderer.resize());
       this.lastConnected = this.session.connection.ok;
       this.lastFail = null;
+      this.adMovesUsed = 0; // rewarded-ad move refills used on this level
       BP.UI.setupHud(this.session, this.level, this.mode, this.dailyKey);
       this.refresh(false);
       this.saveCurrent();
@@ -308,22 +309,52 @@
           : 'You used every move without completing the path. Try a different route!',
         canContinue: false,
         extraMoves: reason === 'moves',
+        adMoves: reason === 'moves' && this.adMovesUsed < BP.RewardsConfig.extraMovesAd.perLevel,
       });
     },
 
     /** Spend Extra Moves from the reward inventory (levels with a move limit only). */
     useExtraMoves() {
+      const now = performance.now();
+      if (now - (this.lastExtraUse || 0) < 600) return; // a double tap must not spend twice
+      this.lastExtraUse = now;
       const s = this.session;
       if (!s || !s.moveLimit || s.state === 'rolling' || s.state === 'won') return;
       if (s.state === 'lost' && s.lostReason !== 'moves') return;
       const n = BP.RewardManager.takeExtraMoves();
       if (!n) { BP.UI.toast('No Extra Moves left. Open gifts to win more!'); return; }
       s.addMoves(n);
+      this.ball.reset(); this.ball.attach(s); this.renderer.clearFail(); this.renderer.dirty = true; // ball back on the start tile
       BP.UI.closeOverlay('fail');
       AudioManager.play('connect');
       BP.UI.toast('+' + n + ' moves added');
       this.refresh(false);
       this.saveCurrent();
+    },
+
+    /** Out of moves: watch a rewarded ad for extra moves (once per level attempt by default). */
+    async watchAdForMoves() {
+      const s = this.session;
+      const cfg = BP.RewardsConfig.extraMovesAd;
+      if (this.adBusy || !s || !s.moveLimit || this.adMovesUsed >= cfg.perLevel) return;
+      if (s.state !== 'lost' || s.lostReason !== 'moves') return;
+      this.adBusy = true;
+      try {
+        const watched = await BP.UI.showAd();
+        if (!watched) {
+          BP.UI.toast(BP.UI.lastAdFailed ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the moves.');
+          return;
+        }
+        if (this.session !== s || s.state !== 'lost') return; // level changed while the ad played
+        this.adMovesUsed += 1;
+        s.addMoves(cfg.moves);
+        this.ball.reset(); this.ball.attach(s); this.renderer.clearFail(); this.renderer.dirty = true;
+        BP.UI.closeOverlay('fail');
+        AudioManager.play('connect');
+        BP.UI.toast('+' + cfg.moves + ' moves added. Keep going!');
+        this.refresh(false);
+        this.saveCurrent();
+      } finally { this.adBusy = false; }
     },
 
     pause() {

@@ -86,7 +86,8 @@ export interface RewardsConfigT {
   milestone: GiftRules & { every: number };
   daily: GiftRules & { baseCost: number; costMultiplier: number; maxPerDay: number };
   shop: { coinsPerStar: number; prices: Record<string, number>; adCoins: number; adsPerDay: number };
-  ad: { seconds: number };
+  ad: { seconds: number; loadMs: number; simulate: 'ok' | 'fail' | 'offline' };
+  extraMovesAd: { moves: number; perLevel: number };
   historyLimit: number;
   types: Record<RewardType, { label: string; art: string }>;
   art: Record<string, string>;

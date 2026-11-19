@@ -31,6 +31,7 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
   const [playing, setPlaying] = useState<string | null>(AudioService.previewing);
   const [toast, setToast] = useState<{ msg: string | null; id: number }>({ msg: null, id: 0 });
   const [ad, setAd] = useState<((watched: boolean) => void) | null>(null);
+  const adFailed = React.useRef(false);
   const [buying, setBuying] = useState<{ skin: BallSkin; price: number } | null>(null);
   const [busy, setBusy] = useState(RewardService.busy);
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
     if (res.ok) {
       AudioService.star(2);
       say(`+${res.entry.amount} coins!`);
-    } else if (res.reason === 'ad') say('Watch the whole ad to get the coins.');
+    } else if (res.reason === 'ad') say(adFailed.current ? 'Ad not available right now. Please try again later.' : 'Watch the whole ad to get the coins.');
     else if (res.reason === 'limit') say('No more coin ads today. Come back tomorrow!');
   };
 
@@ -168,7 +169,7 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
         </View>
       </ScrollView>
       {buying ? <SpendConfirm cost={buying.price} title={`Buy ${buying.skin.name}?`} what="It" onAnswer={onConfirmBuy} /> : null}
-      {ad ? <AdPlaceholder onDone={(w) => ad(w)} /> : null}
+      {ad ? <AdPlaceholder onDone={(w, f) => { adFailed.current = !!f; ad(w); }} /> : null}
       <Toast message={toast.msg} id={toast.id} bottom={insets.bottom + 24} />
     </View>
   );

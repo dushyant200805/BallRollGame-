@@ -224,6 +224,15 @@ console.log('Rewards');
     assert.strictEqual(st.coins, cfg.shop.adsPerDay * cfg.shop.adCoins);
     assert.strictEqual(R.adCoinsStatus(st, cfg, 'd2').left, cfg.shop.adsPerDay);
   });
+  test('setting the clock back does not reset daily gifts or coin ads', () => {
+    const st = R.defaultState(cfg);
+    R.dailyNext(st, cfg, '2026-11-19'); st.day.opened = 3;
+    R.adCoinsStatus(st, cfg, '2026-11-19'); st.adDay.count = 2;
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-18').opened, 3, 'clock moved back');
+    assert.strictEqual(R.adCoinsStatus(st, cfg, '2026-11-18').left, 0);
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-19').opened, 3, 'back to today');
+    assert.strictEqual(R.dailyNext(st, cfg, '2026-11-20').kind, 'ad', 'real next day resets');
+  });
   test('milestone gift every 10 completed levels', () => {
     assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 9).available, 0);
     assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 21).available, 2);
