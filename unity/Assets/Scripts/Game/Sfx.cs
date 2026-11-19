@@ -88,6 +88,35 @@ namespace BallRoll
             if (!SoundOn) i.rollTarget = 0;
         }
 
+        static AudioSource preview;
+        public static string Previewing { get; private set; }
+        public static event System.Action PreviewEnded;
+
+        /// <summary>Plays a ball's rolling sound for ~1.8 s (one preview at a time).</summary>
+        public static void Preview(string ballId)
+        {
+            var i = I;
+            if (preview == null) preview = i.gameObject.AddComponent<AudioSource>();
+            StopPreview();
+            if (!SoundOn) return;
+            preview.clip = i.Clip("balls/" + ballId);
+            if (preview.clip == null) return;
+            preview.volume = RollVol * Master;
+            preview.loop = true;
+            preview.Play();
+            Previewing = ballId;
+            i.CancelInvoke(nameof(EndPreview));
+            i.Invoke(nameof(EndPreview), 1.8f);
+        }
+
+        public static void StopPreview()
+        {
+            if (preview != null) preview.Stop();
+            Previewing = null;
+        }
+
+        void EndPreview() { StopPreview(); PreviewEnded?.Invoke(); }
+
         public static void StopRoll() { if (inst != null) inst.rollTarget = 0; }
 
         void Update()

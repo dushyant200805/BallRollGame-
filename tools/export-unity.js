@@ -70,6 +70,7 @@ write('rewards-config.json', {
     prices: Object.entries(cfg.shop.prices || {}).map(([id, price]) => ({ id, price })),
   },
   extraMovesAd: cfg.extraMovesAd,
+  ad: { seconds: cfg.ad.seconds, loadMs: cfg.ad.loadMs || 0, simulate: cfg.ad.simulate || 'ok' },
   historyLimit: cfg.historyLimit,
   types: Object.entries(cfg.types).map(([type, t]) => ({ type, label: t.label, art: t.art })),
   themes: cfg.themes.map((t) => ({ id: t.id, name: t.name, isDefault: !!t.default, bg: t.bg, glow: t.glow, tray: t.tray })),

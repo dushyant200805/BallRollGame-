@@ -18,7 +18,9 @@ namespace BallRoll
         BoardView board;
         Text title, chip, movesTxt, targetLbl, targetTxt, timeLbl, timeTxt, status;
         Image chipBg, targetBox, timeBox;
-        GameButton undoBtn, restartBtn, hintBtn, playBtn;
+        GameButton undoBtn, restartBtn, hintBtn, playBtn, extraBtn;
+        int adMovesUsed;      // rewarded-ad move refills used on this level
+        float lastExtraUse;   // double-tap guard
 
         string mode = "classic";
         int number = 1;
@@ -28,6 +30,7 @@ namespace BallRoll
         float hudTimer;
         bool reduced;
         string dailyKey; // set while playing the Daily puzzle
+        bool giftReady;  // this win completed a milestone
         bool visible;
 
         // ---------- lifecycle ----------
@@ -130,6 +133,9 @@ namespace BallRoll
             movesTxt = Stat(stats, 0, "Moves", out _, out _);
             targetTxt = Stat(stats, 1, "Par", out targetLbl, out targetBox);
             timeTxt = Stat(stats, 2, "Time", out timeLbl, out timeBox);
+            extraBtn = UIKit.Button(targetBox.rectTransform, "+3", Palette.Teal, Palette.TealDark, Color.white, UseExtraMoves, 32);
+            UIKit.Place((RectTransform)extraBtn.transform, new Vector2(1, 1), new Vector2(110, 70), new Vector2(-30, 0));
+            extraBtn.gameObject.SetActive(false);
 
             // board
             boardArea = UIKit.Rect("BoardArea", root);
@@ -141,7 +147,11 @@ namespace BallRoll
             board.CanInteract = () => session != null && session.CanInteract && overlay == null;
             board.OnMoved = OnMoved;
             board.OnInvalid = OnInvalid;
-            board.OnLimit = () => { Sfx.Play("bump"); Toast("No moves left. Press Play to roll!"); };
+            board.OnLimit = () =>
+            {
+                Sfx.Play("bump");
+                Toast(SaveSystem.Data.rewards.extraMoves > 0 ? $"No moves left. Tap +{GameData.Rewards.extraMovesPerUse} to use Extra Moves, or press Play." : "No moves left. Press Play to roll!");
+            };
 
             // status line
             status = UIKit.Label(root, "", 38, Palette.InkDim, TextAnchor.MiddleCenter, false);
@@ -206,6 +216,9 @@ namespace BallRoll
                 targetTxt.text = level.Par.ToString();
                 targetBox.color = new Color(0, 0, 0, 0.25f);
             }
+            int have = SaveSystem.Data.rewards.extraMoves;
+            extraBtn.gameObject.SetActive(session.MoveLimit > 0 && have > 0 && session.State != SessionState.Won);
+            extraBtn.Text.text = "+" + Mathf.Min(GameData.Rewards.extraMovesPerUse, have);
             undoBtn.Interactable = session.History.Count > 0 && Interactive;
             restartBtn.Interactable = hintBtn.Interactable = playBtn.Interactable = Interactive;
             playBtn.transform.Find("Face").GetComponent<Image>().color = session.Connection.Ok ? Painter.Hex("#ffb800") : Painter.Hex("#4cc38a");
@@ -261,6 +274,7 @@ namespace BallRoll
         void Begin(GameSession s, string heading, string chipText, string chipColor, bool resume)
         {
             session = s;
+            adMovesUsed = 0;
             var cur = SaveSystem.Current;
             if (resume && cur != null && cur.mode == mode && cur.number == number && cur.levelId == level.Id && cur.dailyKey == dailyKey)
                 session.Restore(cur.snapshot);
@@ -396,6 +410,8 @@ namespace BallRoll
                 isBest = prev != null && (session.Moves < prev.bestMoves || stars > prev.stars);
                 best = SaveSystem.Result(mode, number).bestMoves;
             }
+            int milestonesBefore = Rewards.Milestone(SaveSystem.Data.rewards, GameData.Rewards, SaveSystem.CompletedLevels() - (firstClear && mode != "daily" ? 1 : 0)).Available;
+            giftReady = mode != "daily" && RewardService.Milestone().Available > milestonesBefore;
             int coins = 0;
             if (firstClear && GameData.Rewards.firstClearCoins > 0)
             {
@@ -416,6 +432,8 @@ namespace BallRoll
         {
             yield return new WaitForSeconds(reduced ? 0.15f : 0.6f);
             if (mode == "daily") ShowDialog(heading, info, stars, ("Home", true, () => App.I.Show("home")), ("Replay", false, Replay));
+            else if (giftReady) ShowDialog(heading, info, stars, ("Open milestone gift!", true, () => { giftReady = false; App.I.OpenMilestone(); }),
+                (last ? "Level select" : "Next", false, last ? (System.Action)(() => App.I.ShowLevels(mode)) : Next), ("Replay", false, Replay));
             else if (last) ShowDialog(heading, info, stars, ("Level select", true, () => App.I.ShowLevels(mode)), ("Replay", false, Replay));
             else ShowDialog(heading, info, stars, ("Next", true, Next), ("Replay", false, Replay), ("Level select", false, () => App.I.ShowLevels(mode)));
         }
@@ -437,11 +455,63 @@ namespace BallRoll
             Sfx.Play("fail");
             SaveSystem.SaveCurrent(null);
             UpdateHud();
-            ShowDialog(reason == "time" ? "Time's up!" : "Out of moves",
-                reason == "time" ? "The clock ran out before the ball reached the goal. Give it another go!"
-                                 : "You used every move without completing the path. Try a different route!",
-                null, ("Restart level", true, Restart), ("Levels", false, () => App.I.ShowLevels(mode)));
+            if (reason == "time")
+            {
+                ShowDialog("Time's up!", "The clock ran out before the ball reached the goal. Give it another go!",
+                    null, ("Restart level", true, Restart), ("Levels", false, () => App.I.ShowLevels(mode)));
+                return;
+            }
+            var cfg = GameData.Rewards;
+            int have = SaveSystem.Data.rewards.extraMoves;
+            bool canAd = adMovesUsed < cfg.extraMovesAd.perLevel;
+            var buttons = new System.Collections.Generic.List<(string, bool, System.Action)>();
+            if (canAd) buttons.Add(($"▶ Watch ad: +{cfg.extraMovesAd.moves} moves", true, WatchAdForMoves));
+            if (have > 0) buttons.Add(($"Use +{Mathf.Min(cfg.extraMovesPerUse, have)} Extra Moves ({have} left)", !canAd, UseExtraMoves));
+            buttons.Add(("Restart level", !canAd && have == 0, Restart));
+            buttons.Add(("Levels", false, () => App.I.ShowLevels(mode)));
+            ShowDialog("Out of moves", "You used every move without completing the path." + (canAd ? $" Watch a short ad to get +{cfg.extraMovesAd.moves} moves and keep this board." : " Try a different route!"),
+                null, buttons.ToArray());
         }
+
+        void UseExtraMoves()
+        {
+            if (Time.unscaledTime - lastExtraUse < 0.6f) return; // a double tap must not spend twice
+            lastExtraUse = Time.unscaledTime;
+            if (session == null || session.MoveLimit <= 0 || board.Rolling || session.State == SessionState.Won) return;
+            if (session.State == SessionState.Lost && session.LostReason != "moves") return;
+            int n = RewardService.TakeExtraMoves();
+            if (n == 0) { Toast("No Extra Moves left. Open gifts to win more!"); return; }
+            Revive(n, $"+{n} moves added");
+        }
+
+        void WatchAdForMoves()
+        {
+            var cfg = GameData.Rewards.extraMovesAd;
+            if (adMovesUsed >= cfg.perLevel || session.State != SessionState.Lost) return;
+            var s = session;
+            AdService.ShowRewarded((watched, failed) =>
+            {
+                if (!watched) { Toast(failed ? "Ad not available right now. Please try again later." : "Watch the whole ad to get the moves."); return; }
+                if (session != s || s.State != SessionState.Lost) return; // the level changed while the ad played
+                adMovesUsed++;
+                Revive(cfg.moves, $"+{cfg.moves} moves added. Keep going!");
+            });
+        }
+
+        void Revive(int n, string msg)
+        {
+            session.AddMoves(n);
+            CloseOverlay();
+            board.ResetBall();
+            board.ClearMarks();
+            Sfx.Play("connect");
+            Toast(msg);
+            Status($"{session.MovesLeft} moves left. Keep sliding!", Painter.Hex("#7ff0c8"));
+            UpdateHud();
+            SaveCurrent();
+        }
+
+        public void RefreshAfterReward() { if (session != null) UpdateHud(); }
 
         void Pause()
         {

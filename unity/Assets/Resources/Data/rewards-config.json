@@ -79,6 +79,11 @@
   "moves": 3,
   "perLevel": 1
  },
+ "ad": {
+  "seconds": 5,
+  "loadMs": 900,
+  "simulate": "ok"
+ },
  "historyLimit": 30,
  "types": [
   {

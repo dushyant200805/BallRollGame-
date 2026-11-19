@@ -9,11 +9,12 @@ using UnityEngine.UI;
 
 namespace BallRoll
 {
-    public sealed class App : MonoBehaviour
+    public sealed partial class App : MonoBehaviour
     {
         public static App I { get; private set; }
+        public RectTransform Root => root;
 
-        RectTransform root, homeRt, levelsRt, overlayRt;
+        RectTransform root, homeRt, levelsRt, ballsRt, giftsRt, overlayRt;
         RawImage background;
         GameScreen game;
         string screen = "home";
@@ -39,6 +40,8 @@ namespace BallRoll
             game.Build(gameRt);
             homeRt = UIKit.Rect("Home", root); UIKit.Stretch(homeRt);
             levelsRt = UIKit.Rect("Levels", root); UIKit.Stretch(levelsRt);
+            ballsRt = UIKit.Rect("Balls", root); UIKit.Stretch(ballsRt);
+            giftsRt = UIKit.Rect("Gifts", root); UIKit.Stretch(giftsRt);
             BuildToast();
             Show("home");
             Sfx.StartMusic();
@@ -59,16 +62,21 @@ namespace BallRoll
             screen = name;
             homeRt.gameObject.SetActive(name == "home");
             levelsRt.gameObject.SetActive(name == "levels");
+            ballsRt.gameObject.SetActive(name == "balls");
+            giftsRt.gameObject.SetActive(name == "gifts");
+            if (name != "balls" && name != "gifts") Sfx.StopPreview();
             game.SetVisible(name == "game");
             if (name == "home") BuildHome();
             if (name == "levels") BuildLevels(levelsMode);
+            if (name == "balls") BuildBalls();
+            if (name == "gifts") BuildGifts();
         }
 
         void Back()
         {
             if (overlayRt != null) { CloseOverlay(); return; }
             if (screen == "game") { if (!game.HandleBack()) Show("home"); return; }
-            if (screen == "levels") { Show("home"); return; }
+            if (screen == "levels" || screen == "balls" || screen == "gifts") { Show("home"); return; }
             Application.Quit(); // Home: leave the app (Android default)
         }
 
@@ -159,8 +167,8 @@ namespace BallRoll
                 ("Daily", Painter.Hex("#f06aa8"), Painter.Hex("#b83c78"), Color.white, PlayDaily),
                 ("Challenge", Palette.Gold, Palette.GoldDark, Painter.Hex("#4a3200"), () => ShowLevels("challenge")),
                 ("Time Trial", Painter.Hex("#7c6cff"), Painter.Hex("#5040c8"), Color.white, () => ShowLevels("timetrial")),
-                ("Balls", Painter.Hex("#f08a2c"), Painter.Hex("#b45e14"), Color.white, () => Toast("Ball Collection arrives in phase 5")),
-                ("Gifts", Painter.Hex("#9a5ee8"), Painter.Hex("#6a34b0"), Color.white, () => Toast("Gifts & Rewards arrive in phase 5")),
+                ("Balls", Painter.Hex("#f08a2c"), Painter.Hex("#b45e14"), Color.white, () => Show("balls")),
+                ("Gifts", Painter.Hex("#9a5ee8"), Painter.Hex("#6a34b0"), Color.white, () => Show("gifts")),
             };
             for (int i = 0; i < tiles.Length; i++)
             {
@@ -171,6 +179,8 @@ namespace BallRoll
             }
             var dailyDone = SaveSystem.DailyResultFor(LevelRules.DailyKey(System.DateTime.Now)) != null;
             Badge(homeRt, dailyDone ? "✓ Done" : "New", dailyDone ? Painter.Hex("#4cc38a") : Palette.Gold, new Vector2(110, y - 600));
+            int ready = RewardService.ReadyCount();
+            if (ready > 0) Badge(homeRt, ready.ToString(), Palette.Coral, new Vector2(355, y - 815));
 
             // footer
             var s = SaveSystem.Settings;
@@ -382,7 +392,9 @@ namespace BallRoll
             });
         }
 
-        public void Confirm(string title, string msg, string yes, System.Action onYes)
+        public void Confirm(string title, string msg, string yes, System.Action onYes) => Confirm(title, msg, yes, onYes, false);
+
+        public void Confirm(string title, string msg, string yes, System.Action onYes, bool gold)
         {
             CloseOverlay();
             overlayRt = UIKit.Rect("Confirm", root);
@@ -398,7 +410,7 @@ namespace BallRoll
             var no = UIKit.Plain(pr, "Cancel", CloseOverlay);
             UIKit.Place((RectTransform)no.transform, new Vector2(0.5f, 0), new Vector2(360, 130), new Vector2(-195, 110));
             bool done = false;
-            var y = UIKit.Button(pr, yes, Palette.Danger, Painter.Hex("#a82638"), Color.white, () => { if (done) return; done = true; CloseOverlay(); onYes(); }, 44);
+            var y = UIKit.Button(pr, yes, gold ? Palette.Coral : Palette.Danger, gold ? Palette.CoralDark : Painter.Hex("#a82638"), Color.white, () => { if (done) return; done = true; CloseOverlay(); onYes(); }, 44);
             UIKit.Place((RectTransform)y.transform, new Vector2(0.5f, 0), new Vector2(360, 130), new Vector2(195, 110));
         }
 

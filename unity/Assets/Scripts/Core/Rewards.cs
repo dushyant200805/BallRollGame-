@@ -14,6 +14,7 @@ namespace BallRoll.Core
     [Serializable] public sealed class PriceOverride { public string id; public int price; }
     [Serializable] public sealed class ShopRules { public int coinsPerStar = 5; public int adCoins = 25; public int adsPerDay = 2; public List<PriceOverride> prices = new List<PriceOverride>(); }
     [Serializable] public sealed class ExtraMovesAdRules { public int moves = 3; public int perLevel = 1; }
+    [Serializable] public sealed class AdRules { public int seconds = 5; public int loadMs = 900; public string simulate = "ok"; }
     [Serializable] public sealed class RewardTypeInfo { public string type; public string label; public string art; }
     [Serializable] public sealed class ThemeDef { public string id; public string name; public bool isDefault; public string[] bg; public string[] glow; public string[] tray; }
 
@@ -26,6 +27,7 @@ namespace BallRoll.Core
         public DailyRules daily = new DailyRules();
         public ShopRules shop = new ShopRules();
         public ExtraMovesAdRules extraMovesAd = new ExtraMovesAdRules();
+        public AdRules ad = new AdRules();
         public int historyLimit = 30;
         public List<RewardTypeInfo> types = new List<RewardTypeInfo>();
         public List<ThemeDef> themes = new List<ThemeDef>();
