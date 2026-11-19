@@ -44,6 +44,7 @@ namespace BallRoll.Editor
                 target = BuildTarget.Android,
                 options = BuildOptions.None,
             });
+            ClearSigning(); // never leave the keystore path/alias in ProjectSettings (it is committed)
             var s = report.summary;
             Debug.Log($"[BallRoll] Build {s.result}: {outPath} ({s.totalSize / (1024 * 1024)} MB, {s.totalErrors} errors, {s.totalTime})");
             if (Application.isBatchMode) EditorApplication.Exit(s.result == BuildResult.Succeeded ? 0 : 1);
@@ -122,6 +123,16 @@ namespace BallRoll.Editor
             PlayerSettings.Android.startInFullscreen = false;
             PlayerSettings.SplashScreen.showUnityLogo = false;
             PlayerSettings.Android.androidIsGame = true;
+        }
+
+        static void ClearSigning()
+        {
+            PlayerSettings.Android.useCustomKeystore = false;
+            PlayerSettings.Android.keystoreName = "";
+            PlayerSettings.Android.keyaliasName = "";
+            PlayerSettings.Android.keystorePass = "";
+            PlayerSettings.Android.keyaliasPass = "";
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>Signs with ../mobile/keystore.properties when present (never committed).</summary>
