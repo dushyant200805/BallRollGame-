@@ -1,0 +1,14 @@
+{
+    "name": "BallRoll.Editor",
+    "rootNamespace": "BallRoll.Editor",
+    "references": ["BallRoll.Core", "BallRoll.Game"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

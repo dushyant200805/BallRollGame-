@@ -1,0 +1,214 @@
+{
+ "firstClearCoins": 5,
+ "extraMovesPerUse": 3,
+ "milestone": {
+  "every": 10,
+  "weights": [
+   {
+    "type": "ball",
+    "weight": 25
+   },
+   {
+    "type": "sound",
+    "weight": 20
+   },
+   {
+    "type": "theme",
+    "weight": 15
+   },
+   {
+    "type": "moves",
+    "weight": 20
+   },
+   {
+    "type": "coins",
+    "weight": 20
+   }
+  ],
+  "coins": [
+   50,
+   120
+  ],
+  "moves": [
+   3,
+   6
+  ]
+ },
+ "daily": {
+  "baseCost": 25,
+  "costMultiplier": 2,
+  "maxPerDay": 0,
+  "weights": [
+   {
+    "type": "ball",
+    "weight": 15
+   },
+   {
+    "type": "sound",
+    "weight": 15
+   },
+   {
+    "type": "theme",
+    "weight": 10
+   },
+   {
+    "type": "moves",
+    "weight": 30
+   },
+   {
+    "type": "coins",
+    "weight": 30
+   }
+  ],
+  "coins": [
+   15,
+   45
+  ],
+  "moves": [
+   2,
+   4
+  ]
+ },
+ "shop": {
+  "coinsPerStar": 5,
+  "adCoins": 25,
+  "adsPerDay": 2,
+  "prices": []
+ },
+ "extraMovesAd": {
+  "moves": 3,
+  "perLevel": 1
+ },
+ "historyLimit": 30,
+ "types": [
+  {
+   "type": "ball",
+   "label": "New Ball",
+   "art": "ball"
+  },
+  {
+   "type": "sound",
+   "label": "New Rolling Sound",
+   "art": "sound"
+  },
+  {
+   "type": "theme",
+   "label": "New Game Theme",
+   "art": "theme"
+  },
+  {
+   "type": "moves",
+   "label": "Extra Moves",
+   "art": "moves"
+  },
+  {
+   "type": "coins",
+   "label": "Coins",
+   "art": "coins"
+  }
+ ],
+ "themes": [
+  {
+   "id": "midnight",
+   "name": "Midnight Blue",
+   "isDefault": true,
+   "bg": [
+    "#1e3d58",
+    "#0f1e2e"
+   ],
+   "glow": [
+    "rgba(255,204,120,0.12)",
+    "rgba(47,196,182,0.14)"
+   ],
+   "tray": [
+    "#8a5530",
+    "#4b2a13"
+   ]
+  },
+  {
+   "id": "sunset",
+   "name": "Sunset Glow",
+   "isDefault": false,
+   "bg": [
+    "#7a3b5e",
+    "#2b1430"
+   ],
+   "glow": [
+    "rgba(255,170,90,0.22)",
+    "rgba(255,90,120,0.16)"
+   ],
+   "tray": [
+    "#9a5a34",
+    "#552814"
+   ]
+  },
+  {
+   "id": "forest",
+   "name": "Deep Forest",
+   "isDefault": false,
+   "bg": [
+    "#2f5a3a",
+    "#0f2416"
+   ],
+   "glow": [
+    "rgba(220,255,150,0.14)",
+    "rgba(60,200,140,0.16)"
+   ],
+   "tray": [
+    "#7a5a32",
+    "#3e2a12"
+   ]
+  },
+  {
+   "id": "candy",
+   "name": "Candy Pop",
+   "isDefault": false,
+   "bg": [
+    "#b0508f",
+    "#4a2a7a"
+   ],
+   "glow": [
+    "rgba(255,220,240,0.2)",
+    "rgba(120,220,255,0.2)"
+   ],
+   "tray": [
+    "#c0705a",
+    "#7a3a3a"
+   ]
+  },
+  {
+   "id": "space",
+   "name": "Outer Space",
+   "isDefault": false,
+   "bg": [
+    "#26245a",
+    "#07061a"
+   ],
+   "glow": [
+    "rgba(170,140,255,0.18)",
+    "rgba(80,200,255,0.14)"
+   ],
+   "tray": [
+    "#5a4a6a",
+    "#2a2036"
+   ]
+  },
+  {
+   "id": "desert",
+   "name": "Desert Sand",
+   "isDefault": false,
+   "bg": [
+    "#b07a3e",
+    "#4a2c14"
+   ],
+   "glow": [
+    "rgba(255,236,170,0.2)",
+    "rgba(255,150,80,0.16)"
+   ],
+   "tray": [
+    "#8a4a26",
+    "#4a220e"
+   ]
+  }
+ ]
+}
