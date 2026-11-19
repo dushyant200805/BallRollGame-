@@ -167,6 +167,8 @@ namespace BallRoll
             restartBtn = Ctrl(ctrls, 1, "Restart", dim, new Color(0, 0, 0, 0.3f), Palette.Ink, Restart);
             hintBtn = Ctrl(ctrls, 2, "Hint", dim, new Color(0, 0, 0, 0.3f), Palette.Ink, Hint);
             playBtn = Ctrl(ctrls, 3, "Play", Painter.Hex("#4cc38a"), Painter.Hex("#1d8150"), Color.white, Roll);
+            // these play their own sound (slide / hint / rolling), so no extra click on top
+            undoBtn.Quiet = hintBtn.Quiet = playBtn.Quiet = true;
 
         }
 

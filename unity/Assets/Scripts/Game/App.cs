@@ -30,6 +30,7 @@ namespace BallRoll
             Input.multiTouchEnabled = false;
             SaveSystem.Load();
             ApplySettings();
+            Sfx.Init(SaveSystem.SelectedBall().id);
             root = UIKit.CreateRoot("BallRoll");
             background = root.parent.Find("Background").GetComponent<RawImage>();
             ApplyTheme();

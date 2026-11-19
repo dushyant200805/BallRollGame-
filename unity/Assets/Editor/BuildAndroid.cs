@@ -31,6 +31,7 @@ namespace BallRoll.Editor
             string outPath = ArgValue(args, "-outPath") ?? Path.GetFullPath(Path.Combine("Build", aab ? "BallRoll.aab" : "BallRoll.apk"));
 
             EnsureScene();
+            AudioImport.ReimportAll();
             ConfigureExternalTools();
             ConfigurePlayer(emulator);
             ConfigureSigning();
@@ -42,7 +43,8 @@ namespace BallRoll.Editor
                 scenes = new[] { ScenePath },
                 locationPathName = outPath,
                 target = BuildTarget.Android,
-                options = BuildOptions.None,
+                // emulator test builds are Development builds: they log "[Audio]" lines etc.
+                options = emulator ? BuildOptions.Development : BuildOptions.None,
             });
             ClearSigning(); // never leave the keystore path/alias in ProjectSettings (it is committed)
             var s = report.summary;
