@@ -204,7 +204,7 @@ export default function GiftsScreen({ navigation }: ScreenProps<'Gifts'>) {
                     <RewardImage art={d.art} width={32} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.histName}>{d.name}</Text>
-                      <Text style={styles.histSub}>{`${h.source === 'milestone' ? 'Milestone gift' : 'Daily gift'} · ${new Date(h.t).toLocaleDateString()}`}</Text>
+                      <Text style={styles.histSub}>{`${RewardService.sourceLabel(h)} · ${new Date(h.t).toLocaleDateString()}`}</Text>
                     </View>
                   </View>
                 );

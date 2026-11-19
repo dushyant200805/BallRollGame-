@@ -154,7 +154,7 @@ export function AdPlaceholder({ onDone }: { onDone: (watched: boolean) => void }
 }
 
 /** "Spend coins?" confirmation shown before every coin purchase. */
-export function SpendConfirm({ cost, onAnswer }: { cost: number; onAnswer: (yes: boolean) => void }) {
+export function SpendConfirm({ cost, onAnswer, title = 'Open another gift?', what = 'This gift' }: { cost: number; onAnswer: (yes: boolean) => void; title?: string; what?: string }) {
   const answered = useRef(false);
   const answer = (yes: boolean) => {
     if (answered.current) return; // a double tap must never pay twice
@@ -170,11 +170,11 @@ export function SpendConfirm({ cost, onAnswer }: { cost: number; onAnswer: (yes:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <Panel title="Open another gift?" iconColor={colors.gold} icon={<RewardImage art="coins" width={44} />}>
-      <PanelText>{`This gift costs ${cost} coins. You have ${RewardService.coins} coins.`}</PanelText>
+    <Panel title={title} iconColor={colors.gold} icon={<RewardImage art="coins" width={44} />}>
+      <PanelText>{`${what} costs ${cost} coins. You have ${RewardService.coins} coins.`}</PanelText>
       <View style={styles.row}>
         <GameButton style={{ flex: 1 }} label="Cancel" onPress={() => answer(false)} />
-        <GameButton style={{ flex: 1 }} variant="primary" label={`Spend ${cost}`} onPress={() => answer(true)} />
+        <GameButton style={{ flex: 1 }} variant="primary" label={what === 'This gift' ? `Spend ${cost}` : `Buy for ${cost}`} onPress={() => answer(true)} />
       </View>
     </Panel>
   );

@@ -9,6 +9,7 @@ export interface RewardsConfigT {
   extraMovesPerUse: number;
   milestone: GiftRules & { every: number };
   daily: GiftRules & { baseCost: number; costMultiplier: number; maxPerDay: number };
+  shop: { coinsPerStar: number; prices: Record<string, number>; adCoins: number; adsPerDay: number };
   ad: { seconds: number };
   historyLimit: number;
   types: Record<RewardType, { label: string; art: string }>;
@@ -56,6 +57,12 @@ export const REWARDS_CONFIG: RewardsConfigT = {
       2,
       4
     ]
+  },
+  "shop": {
+    "coinsPerStar": 5,
+    "prices": {},
+    "adCoins": 25,
+    "adsPerDay": 2
   },
   "ad": {
     "seconds": 5

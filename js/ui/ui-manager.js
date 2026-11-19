@@ -82,6 +82,8 @@
         case 'balls': UI.showScreen('balls'); break;
         case 'ball-preview': UI.toggleBallPreview(el.dataset.ball); break;
         case 'ball-use': UI.useBall(el.dataset.ball); break;
+        case 'ball-buy': UI.buyBall(el.dataset.ball); break;
+        case 'ad-coins': UI.watchAdForCoins(); break;
         case 'gifts': UI.showScreen('gifts'); break;
         case 'open-daily': UI.openDailyGift(); break;
         case 'open-milestone': UI.openMilestoneGift(); break;
@@ -234,7 +236,7 @@
         const d = RM.describe(h);
         const li = document.createElement('li');
         li.innerHTML = '<img src="' + RM.artUrl(d.art) + '" alt=""><div><b>' + d.name + '</b><small>' +
-          (h.source === 'milestone' ? 'Milestone gift' : 'Daily gift') + ' \u00b7 ' + new Date(h.t).toLocaleDateString() + '</small></div>';
+          RM.sourceLabel(h) + ' \u00b7 ' + new Date(h.t).toLocaleDateString() + '</small></div>';
         hist.appendChild(li);
       });
     },
@@ -387,6 +389,7 @@
       const stars = SaveManager.allStars();
       const selected = SaveManager.selectedBall().id;
       $('#balls-stars span').textContent = stars;
+      UI.renderShopBar();
       SaveManager.data.ballsSeen = UI.unlockedBallCount();
       SaveManager.persist();
       const grid = $('#ball-grid');
@@ -410,14 +413,20 @@
             '<span class="lock-tag"><i class="bi bi-lock-fill"></i>' + skin.cost + '<i class="bi bi-star-fill"></i></span>';
           const useLabel = unlocked ? (isSel ? skin.name + ' selected' : 'Use ' + skin.name)
             : skin.name + ', locked, needs ' + skin.cost + ' stars';
-          const useText = isSel ? '<i class="bi bi-check-lg"></i> In use' : unlocked ? 'Use' : 'Need ' + (skin.cost - stars) + ' \u2605';
+          const useText = isSel ? '<i class="bi bi-check-lg"></i> In use' : 'Use';
+          const price = BP.RewardManager.ballPrice(skin);
+          const actionBtn = unlocked
+            ? '<button class="use-btn" data-action="ball-use" data-ball="' + skin.id + '"' + (isSel ? ' disabled' : '') + ' aria-label="' + useLabel + '">' + useText + '</button>'
+            : '<button class="use-btn buy-btn' + (BP.RewardManager.coins < price ? ' short' : '') + '" data-action="ball-buy" data-ball="' + skin.id + '"' +
+              ' aria-label="Buy ' + skin.name + ' for ' + price + ' coins, or earn ' + (skin.cost - stars) + ' more stars">' +
+              '<img src="' + BP.RewardManager.artUrl('coins') + '" alt="">' + price + '</button>';
           card.innerHTML = lock +
             '<canvas aria-hidden="true"></canvas>' +
             '<h3>' + skin.name + '</h3>' +
             '<div class="ball-sound">' + skin.sound + '</div>' +
+            (unlocked ? '' : '<div class="ball-need">or ' + (skin.cost - stars) + ' more \u2605</div>') +
             '<div class="ball-actions">' +
-              '<button class="use-btn" data-action="ball-use" data-ball="' + skin.id + '"' + (unlocked && !isSel ? '' : ' disabled') +
-                ' aria-label="' + useLabel + '">' + useText + '</button>' +
+              actionBtn +
               '<button class="preview-btn' + (isPlaying ? ' playing' : '') + '" data-action="ball-preview" data-ball="' + skin.id + '"' +
                 ' aria-label="Preview ' + skin.name + ' sound" aria-pressed="' + isPlaying + '">' +
                 '<i class="bi ' + (isPlaying ? 'bi-stop-fill' : 'bi-play-fill') + '"></i></button>' +
@@ -444,6 +453,49 @@
       const ok = AudioManager.playPreview(id, (endedId) => UI.setPreviewButton(endedId, false));
       if (ok) UI.setPreviewButton(id, true);
       else UI.toast('Sound is unavailable in this browser.');
+    },
+
+    renderShopBar() {
+      const RM = BP.RewardManager;
+      $('#balls-coins span').textContent = RM.coins;
+      const ad = RM.adCoins();
+      const btn = $('#btn-ad-coins');
+      btn.disabled = !ad.left || RM.busy;
+      btn.querySelector('span').textContent = ad.left ? 'Watch ad +' + ad.coins : 'No more ads today';
+      btn.setAttribute('aria-label', ad.left ? 'Watch an ad to earn ' + ad.coins + ' coins' + (ad.max ? ', ' + ad.left + ' left today' : '') : 'No more coin ads today');
+    },
+
+    async watchAdForCoins() {
+      const RM = BP.RewardManager;
+      if (RM.busy) return;
+      const res = await RM.watchAdForCoins(() => UI.showAd());
+      if (res.ok) {
+        AudioManager.play('star', 2);
+        UI.toast('+' + res.entry.amount + ' coins!');
+      } else if (res.reason === 'ad') UI.toast('Watch the whole ad to get the coins.');
+      else if (res.reason === 'limit') UI.toast('No more coin ads today. Come back tomorrow!');
+      if (UI.currentScreen === 'balls') UI.renderBalls();
+    },
+
+    async buyBall(id) {
+      const RM = BP.RewardManager;
+      const skin = BP.BallSkins.get(id);
+      if (RM.busy || SaveManager.isBallOwned(skin)) return;
+      const price = RM.ballPrice(skin);
+      if (RM.coins < price) {
+        UI.toast('You need ' + (price - RM.coins) + ' more coins. Watch an ad to earn coins!');
+        return;
+      }
+      const yes = await UI.confirm('Buy ' + skin.name + '?', 'It costs ' + price + ' coins. You have ' + RM.coins + ' coins.', 'Buy for ' + price, { icon: 'coin', tone: 'gold' });
+      if (!yes) return;
+      const res = RM.buyBall(id, price);
+      if (res.ok) {
+        AudioManager.play('win');
+        SaveManager.setBall(id);
+        BP.Engine.applyBall();
+        UI.toast(skin.name + ' unlocked and selected!');
+      } else UI.toast(res.reason === 'coins' ? 'Not enough coins.' : 'Could not buy this ball. Please try again.');
+      UI.renderBalls();
     },
 
     useBall(id) {

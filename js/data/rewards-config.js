@@ -40,6 +40,15 @@
       moves: [2, 4],
     },
 
+    /** Ball shop on the Ball Collection screen: buy a locked ball with coins, and watch
+     *  rewarded ads to earn coins. */
+    shop: {
+      coinsPerStar: 5,  // a ball's coin price = its star cost x this (Golden 15 stars = 75 coins)
+      prices: {},       // per-ball price overrides, e.g. { glow: 999 }
+      adCoins: 25,      // coins for watching one rewarded ad to the end
+      adsPerDay: 2,     // coin ads per day (0 = unlimited); resets each day
+    },
+
     /** Placeholder rewarded ad (stands in for an ad network until one is integrated). */
     ad: { seconds: 5 },
 

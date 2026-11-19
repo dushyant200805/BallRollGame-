@@ -41,8 +41,12 @@ previewed balls in memory.
 
 Home has a **Gifts & Rewards** button. Its badge counts the gifts that are ready to open.
 
-- **Coins:** you earn coins the first time you solve a level or a day's Daily puzzle, and from
-  gifts. Coins pay for extra daily gifts.
+- **Coins:** you earn coins the first time you solve a level or a day's Daily puzzle, from
+  gifts, and by watching a rewarded ad on the Ball Collection screen (25 coins per ad, up to 2
+  ads a day; the count resets each day). Coins pay for extra daily gifts and for balls.
+- **Buy balls:** each locked ball in the Ball Collection has a coin price, its star cost x 5
+  (Golden Ball: 15 stars or 75 coins). A confirmation comes first, and the ball is selected
+  right away.
 - **Extra Moves:** Challenge levels have a move limit. Tap the **+3** badge on *Moves left*, or
   **Use Extra Moves** on the *Out of moves* dialog, to add moves and keep playing.
 - **Milestone gift:** you get one gift for every 10 completed levels. All modes count, and each
@@ -67,6 +71,7 @@ Home has a **Gifts & Rewards** button. Its badge counts the gifts that are ready
 - reward weights (unlock probabilities)
 - amounts
 - the coin cost and how fast it doubles
+- ball prices, coins per ad and ads per day (`shop`)
 - the daily limit
 - how long the ad is
 - the list of themes

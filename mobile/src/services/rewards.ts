@@ -110,6 +110,50 @@ export const RewardService = {
     }
   },
 
+  // ---- ball shop & coin ads ------------------------------------------------------------
+  ballPrice(skin: { id: string; cost: number }) {
+    return R.ballPrice(cfg, skin);
+  },
+  adCoins() {
+    return R.adCoinsStatus(RewardService.state, cfg, LevelManager.dailyKey());
+  },
+  buyBall(id: string, expectedPrice: number): R.BuyResult {
+    if (busy) return { ok: false, reason: 'busy' };
+    setBusy(true);
+    try {
+      const res = R.buyBall(RewardService.state, RewardService.env(), id, expectedPrice);
+      if (res.ok) {
+        Storage.persist();
+        void Storage.flush();
+      }
+      return res;
+    } finally {
+      setBusy(false);
+    }
+  },
+  /** Rewarded ad for coins; `showAd` resolves true only when the ad was watched to the end. */
+  async watchAdForCoins(showAd: () => Promise<boolean>): Promise<{ ok: true; entry: R.HistoryEntry } | { ok: false; reason: 'busy' | 'limit' | 'ad' }> {
+    if (busy) return { ok: false, reason: 'busy' };
+    if (!RewardService.adCoins().left) return { ok: false, reason: 'limit' };
+    setBusy(true);
+    try {
+      if (!(await showAd())) return { ok: false, reason: 'ad' };
+      const entry = R.grantAdCoins(RewardService.state, cfg, LevelManager.dailyKey());
+      if (!entry) return { ok: false, reason: 'limit' };
+      Storage.persist();
+      void Storage.flush();
+      return { ok: true, entry };
+    } finally {
+      setBusy(false);
+    }
+  },
+  sourceLabel(e: R.HistoryEntry): string {
+    if (e.source === 'milestone') return 'Milestone gift';
+    if (e.source === 'shop') return `Bought for ${e.price} coins`;
+    if (e.source === 'ad') return 'Watched an ad';
+    return 'Daily gift';
+  },
+
   // ---- earning / spending -----------------------------------------------------------
   addCoins(n: number): number {
     if (!(n > 0)) return 0;

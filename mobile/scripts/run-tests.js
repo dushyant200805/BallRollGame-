@@ -166,6 +166,17 @@ console.log('Rewards');
     assert.strictEqual(R.dailyNext(st, cfg, 'd1').cost, 100);
     assert.strictEqual(R.dailyNext(st, cfg, 'd2').kind, 'ad');
   });
+  test('ball shop and coin ads match the web rules', () => {
+    const a = R.defaultRewardState(cfg), b = webR.defaultState(webCfg);
+    for (const [st, Rx, c] of [[a, R, cfg], [b, webR, webCfg]]) {
+      const env = { cfg: c, skins: BALL_SKINS, stars: 0 };
+      for (let i = 0; i < c.shop.adsPerDay + 1; i++) Rx.grantAdCoins(st, c, 'd1', 1);
+      const price = Rx.ballPrice(c, BALL_SKINS.find((s) => s.id === 'black'));
+      assert.ok(Rx.buyBall(st, env, 'black', price, 1).ok);
+      assert.strictEqual(Rx.buyBall(st, env, 'black', price, 1).reason, 'owned');
+    }
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
+  });
   test('extra moves revive an out-of-moves loss', () => {
     const s = new GameSession(tiny, { mode: 'challenge', moveLimit: 1 });
     s.moves = 1;

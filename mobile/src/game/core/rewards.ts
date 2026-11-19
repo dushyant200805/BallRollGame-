@@ -6,10 +6,11 @@ import type { GameTheme, RewardType, RewardsConfigT } from '../data/rewardsConfi
 export interface HistoryEntry {
   id: number;
   t: number;
-  source: 'daily' | 'milestone';
+  source: 'daily' | 'milestone' | 'shop' | 'ad';
   type: RewardType;
   item?: string;
   amount?: number;
+  price?: number; // coins paid (shop)
 }
 
 export interface RewardState {
@@ -22,6 +23,7 @@ export interface RewardState {
   rollSound: string; // '' = the selected ball's own sound
   milestonesClaimed: number;
   day: { key: string | null; opened: number };
+  adDay: { key: string | null; count: number }; // coin ads watched today (ball shop)
   history: HistoryEntry[];
   seq: number;
 }
@@ -54,6 +56,7 @@ export const defaultRewardState = (cfg: RewardsConfigT): RewardState => ({
   rollSound: '',
   milestonesClaimed: 0,
   day: { key: null, opened: 0 },
+  adDay: { key: null, count: 0 },
   history: [],
   seq: 0,
 });
@@ -146,6 +149,51 @@ export function dailyNext(state: RewardState, cfg: RewardsConfigT, todayKey: str
   if (cfg.daily.maxPerDay && opened >= cfg.daily.maxPerDay) return { kind: 'limit', opened };
   if (opened === 0) return { kind: 'ad', opened };
   return { kind: 'coins', cost: dailyCost(cfg, opened), opened };
+}
+
+// ---- ball shop & coin ads -------------------------------------------------------
+function logEntry(state: RewardState, cfg: RewardsConfigT, entry: Omit<HistoryEntry, 'id' | 't'>, now: number): HistoryEntry {
+  state.seq += 1;
+  const e: HistoryEntry = { id: state.seq, t: now, ...entry };
+  state.history.unshift(e);
+  state.history.length = Math.min(state.history.length, cfg.historyLimit || 30);
+  return e;
+}
+
+/** Coin price of a ball: config override, else star cost x coinsPerStar. */
+export function ballPrice(cfg: RewardsConfigT, skin: { id: string; cost: number }): number {
+  const o = cfg.shop.prices && cfg.shop.prices[skin.id];
+  return o != null ? o : skin.cost * cfg.shop.coinsPerStar;
+}
+
+export type BuyResult = { ok: true; entry: HistoryEntry } | { ok: false; reason: 'owned' | 'coins' | 'state' | 'busy' };
+
+/** Buy a locked ball at the price the player confirmed (nothing is charged if it changed). */
+export function buyBall(state: RewardState, env: RewardEnv, id: string, expectedPrice: number, now = Date.now()): BuyResult {
+  const skin = env.skins.find((s) => s.id === id);
+  if (!skin) return { ok: false, reason: 'state' };
+  if (ballOwned(state, skin, env.stars)) return { ok: false, reason: 'owned' };
+  const price = ballPrice(env.cfg, skin);
+  if (price !== expectedPrice) return { ok: false, reason: 'state' };
+  if (state.coins < price) return { ok: false, reason: 'coins' };
+  state.coins -= price;
+  state.balls.push(id);
+  return { ok: true, entry: logEntry(state, env.cfg, { source: 'shop', type: 'ball', item: id, price }, now) };
+}
+
+/** Coin ads left today; max 0 = unlimited. */
+export function adCoinsStatus(state: RewardState, cfg: RewardsConfigT, todayKey: string) {
+  if (!state.adDay || state.adDay.key !== todayKey) state.adDay = { key: todayKey, count: 0 };
+  const max = cfg.shop.adsPerDay || 0;
+  return { max, left: max ? Math.max(0, max - state.adDay.count) : 99, coins: cfg.shop.adCoins };
+}
+
+/** Pay out one watched coin ad; null when today's limit is used up. */
+export function grantAdCoins(state: RewardState, cfg: RewardsConfigT, todayKey: string, now = Date.now()): HistoryEntry | null {
+  if (!adCoinsStatus(state, cfg, todayKey).left) return null;
+  state.adDay.count += 1;
+  state.coins += cfg.shop.adCoins;
+  return logEntry(state, cfg, { source: 'ad', type: 'coins', amount: cfg.shop.adCoins }, now);
 }
 
 // ---- milestone gifts -----------------------------------------------------------

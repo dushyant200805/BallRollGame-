@@ -13,6 +13,10 @@ import { BALL_COLLECTIONS, BALL_SKINS, type BallSkin } from '../game/data/ballSk
 import { ballPicture } from '../game/render/ballPainter';
 import { Storage } from '../services/storage';
 import { RewardService } from '../services/rewards';
+import { RewardImage } from '../components/RewardImage';
+import { GameButton } from '../components/GameButton';
+import { AdPlaceholder, SpendConfirm } from '../components/RewardDialogs';
+import { CoinChip } from './GiftsScreen';
 import { AudioService } from '../services/audio';
 import { useStorageVersion } from '../hooks/useStorage';
 import type { ScreenProps } from '../navigation/types';
@@ -26,7 +30,18 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
   const { width } = useWindowDimensions();
   const [playing, setPlaying] = useState<string | null>(AudioService.previewing);
   const [toast, setToast] = useState<{ msg: string | null; id: number }>({ msg: null, id: 0 });
+  const [ad, setAd] = useState<((watched: boolean) => void) | null>(null);
+  const [buying, setBuying] = useState<{ skin: BallSkin; price: number } | null>(null);
+  const [busy, setBusy] = useState(RewardService.busy);
+  useEffect(() => {
+    const off = RewardService.subscribeBusy(setBusy);
+    return () => {
+      off();
+    };
+  }, []);
   const stars = Storage.allStars();
+  const coins = RewardService.coins;
+  const adStatus = RewardService.adCoins();
   const selected = Storage.selectedBall().id;
 
   const innerW = Math.min(width, 640) - 32;
@@ -63,6 +78,40 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
     say(`${skin.name} selected`);
   }, []);
 
+  const watchAd = async () => {
+    if (RewardService.busy) return;
+    const res = await RewardService.watchAdForCoins(() => new Promise<boolean>((resolve) => setAd(() => resolve)));
+    setAd(null);
+    if (res.ok) {
+      AudioService.star(2);
+      say(`+${res.entry.amount} coins!`);
+    } else if (res.reason === 'ad') say('Watch the whole ad to get the coins.');
+    else if (res.reason === 'limit') say('No more coin ads today. Come back tomorrow!');
+  };
+
+  const onBuy = useCallback((skin: BallSkin) => {
+    if (RewardService.busy || Storage.isBallUnlocked(skin)) return;
+    const price = RewardService.ballPrice(skin);
+    if (RewardService.coins < price) {
+      say(`You need ${price - RewardService.coins} more coins. Watch an ad to earn coins!`);
+      return;
+    }
+    setBuying({ skin, price });
+  }, []);
+
+  const onConfirmBuy = (yes: boolean) => {
+    const b = buying;
+    setBuying(null);
+    if (!yes || !b) return;
+    const res = RewardService.buyBall(b.skin.id, b.price);
+    if (res.ok) {
+      AudioService.play('win');
+      Storage.setBall(b.skin.id);
+      AudioService.setBall(RewardService.rollSoundId());
+      say(`${b.skin.name} unlocked and selected!`);
+    } else say(res.reason === 'coins' ? 'Not enough coins.' : 'Could not buy this ball. Please try again.');
+  };
+
   return (
     <View style={styles.root}>
       <ScreenBackground />
@@ -74,7 +123,18 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
           <Text style={styles.starText}>{stars}</Text>
         </View>
       </View>
-      <Text style={styles.desc}>Every ball looks and sounds different. Earn stars to unlock more, and tap ▶ to hear one.</Text>
+      <View style={styles.shopBar}>
+        <CoinChip coins={coins} />
+        <GameButton
+          variant="primary"
+          label={adStatus.left ? `Watch ad +${adStatus.coins}` : 'No more ads today'}
+          accessibilityLabel={adStatus.left ? `Watch an ad to earn ${adStatus.coins} coins` : 'No more coin ads today'}
+          disabled={!adStatus.left || busy}
+          icon={(c) => <Ionicons name="play-circle" size={20} color={c} />}
+          onPress={watchAd}
+        />
+      </View>
+      <Text style={styles.desc}>Every ball looks and sounds different. Earn stars or buy with coins to unlock more, and tap ▶ to hear one.</Text>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
         <View style={{ width: innerW, alignSelf: 'center' }}>
@@ -93,6 +153,9 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
                     width={cardW}
                     unlocked={Storage.isBallUnlocked(skin)}
                     missing={Math.max(0, skin.cost - stars)}
+                    price={RewardService.ballPrice(skin)}
+                    short={coins < RewardService.ballPrice(skin)}
+                    onBuy={onBuy}
                     selected={skin.id === selected}
                     playing={playing === skin.id}
                     onPreview={onPreview}
@@ -104,6 +167,8 @@ export default function BallsScreen({ navigation }: ScreenProps<'Balls'>) {
           ))}
         </View>
       </ScrollView>
+      {buying ? <SpendConfirm cost={buying.price} title={`Buy ${buying.skin.name}?`} what="It" onAnswer={onConfirmBuy} /> : null}
+      {ad ? <AdPlaceholder onDone={(w) => ad(w)} /> : null}
       <Toast message={toast.msg} id={toast.id} bottom={insets.bottom + 24} />
     </View>
   );
@@ -118,9 +183,12 @@ interface CardProps {
   playing: boolean;
   onPreview: (id: string) => void;
   onUse: (skin: BallSkin) => void;
+  price: number;
+  short: boolean;
+  onBuy: (skin: BallSkin) => void;
 }
 
-const BallCard = memo(function BallCard({ skin, width, unlocked, missing, selected, playing, onPreview, onUse }: CardProps) {
+const BallCard = memo(function BallCard({ skin, width, unlocked, missing, selected, playing, onPreview, onUse, price, short, onBuy }: CardProps) {
   const picture = useMemo(() => ballPicture(skin, BALL_SIZE), [skin]);
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -148,10 +216,22 @@ const BallCard = memo(function BallCard({ skin, width, unlocked, missing, select
       </View>
       <Text style={styles.name} numberOfLines={1}>{skin.name}</Text>
       <Text style={styles.sound} numberOfLines={2}>{skin.sound}</Text>
+      {!unlocked ? <Text style={styles.need}>{`or ${missing} more ★`}</Text> : null}
       <View style={styles.actions}>
+        {!unlocked ? (
+          <Pressable
+            onPress={() => onBuy(skin)}
+            accessibilityRole="button"
+            accessibilityLabel={`Buy ${skin.name} for ${price} coins, or earn ${missing} more stars`}
+            style={({ pressed }) => [styles.use, styles.buy, short && { opacity: 0.8 }, { transform: [{ translateY: pressed ? 2 : 0 }] }]}
+          >
+            <RewardImage art="coins" width={18} />
+            <Text style={styles.buyText}>{price}</Text>
+          </Pressable>
+        ) : (
         <Pressable
           onPress={() => onUse(skin)}
-          disabled={!unlocked || selected}
+          disabled={selected}
           accessibilityRole="button"
           accessibilityLabel={unlocked ? (selected ? `${skin.name} selected` : `Use ${skin.name}`) : `${skin.name}, locked, needs ${skin.cost} stars`}
           style={({ pressed }) => [
@@ -162,9 +242,10 @@ const BallCard = memo(function BallCard({ skin, width, unlocked, missing, select
           ]}
         >
           <Text style={[styles.useText, !unlocked && { color: colors.inkDim }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-            {selected ? '✓ In use' : unlocked ? 'Use' : `Need ${missing} ★`}
+            {selected ? '✓ In use' : 'Use'}
           </Text>
         </Pressable>
+        )}
         <Animated.View style={pulseStyle}>
           <Pressable
             onPress={() => onPreview(skin.id)}
@@ -215,6 +296,10 @@ const styles = StyleSheet.create({
   useSel: { backgroundColor: colors.gold, borderBottomColor: colors.goldDark },
   useLocked: { backgroundColor: 'rgba(0,0,0,0.25)', borderBottomColor: 'transparent' },
   useText: { fontFamily: fonts.bold, fontSize: 13, color: colors.panelInk },
+  shopBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8, paddingHorizontal: 16 },
+  need: { fontFamily: fonts.medium, fontSize: 11, color: colors.inkDim, marginTop: -2 },
+  buy: { flexDirection: 'row', gap: 4, backgroundColor: colors.gold, borderBottomColor: colors.goldDark },
+  buyText: { fontFamily: fonts.bold, fontSize: 14, color: '#4a3200' },
   preview: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.teal, borderBottomWidth: 3, borderBottomColor: colors.tealDark },
   previewOn: { backgroundColor: colors.coral, borderBottomColor: colors.coralDark },
 });

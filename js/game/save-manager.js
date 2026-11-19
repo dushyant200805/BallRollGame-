@@ -157,10 +157,12 @@
 
     resetProgress() {
       const settings = data.settings;
-      const day = data.rewards.day; // today's daily-gift count survives, so the free gift can't be re-opened
+      const day = data.rewards.day; // today's gift and ad counts survive, so free gifts/ads can't be repeated
+      const adDay = data.rewards.adDay;
       data = defaults();
       data.settings = settings;
       data.rewards.day = day;
+      if (adDay) data.rewards.adDay = adDay;
       SaveManager.persist();
     },
 

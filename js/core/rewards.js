@@ -22,6 +22,7 @@
     rollSound: '', // '' = use the selected ball's own sound
     milestonesClaimed: 0,
     day: { key: null, opened: 0 },
+    adDay: { key: null, count: 0 }, // coin ads watched today (ball shop)
     history: [],
     seq: 0,
   });
@@ -117,6 +118,50 @@
     return { kind: 'coins', cost: dailyCost(cfg, opened), opened };
   }
 
+  // ---- ball shop & coin ads -------------------------------------------------------
+  function logEntry(state, cfg, entry, now) {
+    state.seq += 1;
+    const e = Object.assign({ id: state.seq, t: now }, entry);
+    state.history.unshift(e);
+    state.history.length = Math.min(state.history.length, cfg.historyLimit || 30);
+    return e;
+  }
+
+  /** Coin price of a ball: config override, else star cost x coinsPerStar. */
+  function ballPrice(cfg, skin) {
+    const o = cfg.shop.prices && cfg.shop.prices[skin.id];
+    return o != null ? o : skin.cost * cfg.shop.coinsPerStar;
+  }
+
+  /** Buy a locked ball. `expectedPrice` is the price the player confirmed (nothing is charged
+   *  if it changed). Returns {ok, entry} or {ok:false, reason: 'owned'|'coins'|'state'}. */
+  function buyBall(state, env, id, expectedPrice, now = Date.now()) {
+    const skin = env.skins.find((s) => s.id === id);
+    if (!skin) return { ok: false, reason: 'state' };
+    if (ballOwned(state, skin, env.stars)) return { ok: false, reason: 'owned' };
+    const price = ballPrice(env.cfg, skin);
+    if (price !== expectedPrice) return { ok: false, reason: 'state' };
+    if (state.coins < price) return { ok: false, reason: 'coins' };
+    state.coins -= price;
+    state.balls.push(id);
+    return { ok: true, entry: logEntry(state, env.cfg, { source: 'shop', type: 'ball', item: id, price }, now) };
+  }
+
+  /** Coin ads left today: {left, max, coins}; max 0 = unlimited. */
+  function adCoinsStatus(state, cfg, todayKey) {
+    if (!state.adDay || state.adDay.key !== todayKey) state.adDay = { key: todayKey, count: 0 };
+    const max = cfg.shop.adsPerDay || 0;
+    return { max, left: max ? Math.max(0, max - state.adDay.count) : 99, coins: cfg.shop.adCoins };
+  }
+
+  /** Pay out one watched coin ad; null when today's limit is used up. */
+  function grantAdCoins(state, cfg, todayKey, now = Date.now()) {
+    if (!adCoinsStatus(state, cfg, todayKey).left) return null;
+    state.adDay.count += 1;
+    state.coins += cfg.shop.adCoins;
+    return logEntry(state, cfg, { source: 'ad', type: 'coins', amount: cfg.shop.adCoins }, now);
+  }
+
   // ---- milestone gifts -----------------------------------------------------------
   function milestoneStatus(state, cfg, completed) {
     const every = cfg.milestone.every;
@@ -135,6 +180,7 @@
     ballOwned, soundOwned, themeOwned, eligibleItems,
     pickReward, grant,
     rollDay, dailyCost, dailyNext, milestoneStatus,
+    ballPrice, buyBall, adCoinsStatus, grantAdCoins,
   };
 
   BP.Rewards = Rewards;

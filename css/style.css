@@ -447,3 +447,12 @@ body.reduced .reward-gift, body.reduced .extra-moves-btn, body.reduced .btn-gift
 @media (max-height: 640px) {
   .btn-tile { min-height: 60px; }
 }
+
+/* ---- ball shop ---- */
+.shop-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 2px; flex-wrap: wrap; }
+.ad-coins-btn { min-height: 44px; padding: 8px 16px; font-size: 16px; gap: 8px; }
+.ad-coins-btn img { width: 22px; height: 22px; }
+.ball-card .buy-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: linear-gradient(#ffe066, var(--gold)); color: #4a3200; box-shadow: 0 3px 0 var(--gold-dark); }
+.ball-card .buy-btn img { width: 20px; height: 20px; }
+.ball-card .buy-btn.short { filter: saturate(.55); opacity: .85; }
+.ball-card .ball-need { font-size: 12px; color: var(--ink-dim); margin-top: -2px; }

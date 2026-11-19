@@ -260,9 +260,11 @@ export const Storage = {
   resetProgress(): void {
     const settings = data.settings;
     const day = data.rewards.day; // today's daily-gift count survives, so the free gift can't be re-opened
+    const adDay = data.rewards.adDay;
     data = defaults();
     data.settings = settings;
     data.rewards.day = day;
+    if (adDay) data.rewards.adDay = adDay;
     Storage.persist();
   },
 };

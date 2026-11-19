@@ -201,6 +201,29 @@ console.log('Rewards');
     assert.deepStrictEqual(costs, [25, 50, 100, 200]);
     assert.strictEqual(R.dailyNext(st, cfg, '2026-11-18').kind, 'ad');
   });
+  test('ball shop: buy a locked ball once, charged exactly the confirmed price', () => {
+    const st = R.defaultState(cfg);
+    const env = { cfg, skins: SKINS, stars: 0 };
+    const golden = SKINS.find((x) => x.id === 'golden');
+    const price = R.ballPrice(cfg, golden);
+    assert.strictEqual(price, golden.cost * cfg.shop.coinsPerStar);
+    assert.strictEqual(R.buyBall(st, env, 'golden', price).reason, 'coins');
+    st.coins = price * 2;
+    assert.strictEqual(R.buyBall(st, env, 'golden', price + 1).reason, 'state', 'stale price charges nothing');
+    assert.ok(R.buyBall(st, env, 'golden', price).ok);
+    assert.strictEqual(st.coins, price);
+    assert.strictEqual(R.buyBall(st, env, 'golden', price).reason, 'owned', 'never twice');
+    assert.strictEqual(st.coins, price);
+    assert.strictEqual(R.buyBall(st, env, 'ruby', 0).reason, 'owned', 'free ball is owned');
+    assert.ok(!R.eligibleItems('ball', st, env).includes('golden'), 'gifts skip bought balls');
+  });
+  test('coin ads pay out up to the daily limit and reset next day', () => {
+    const st = R.defaultState(cfg);
+    for (let i = 0; i < cfg.shop.adsPerDay; i++) assert.ok(R.grantAdCoins(st, cfg, 'd1'));
+    assert.strictEqual(R.grantAdCoins(st, cfg, 'd1'), null);
+    assert.strictEqual(st.coins, cfg.shop.adsPerDay * cfg.shop.adCoins);
+    assert.strictEqual(R.adCoinsStatus(st, cfg, 'd2').left, cfg.shop.adsPerDay);
+  });
   test('milestone gift every 10 completed levels', () => {
     assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 9).available, 0);
     assert.strictEqual(R.milestoneStatus({ milestonesClaimed: 0 }, cfg, 21).available, 2);

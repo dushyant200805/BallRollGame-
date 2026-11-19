@@ -94,7 +94,11 @@
         <h2>Ball Collection</h2>
         <div class="star-count" id="balls-stars"><i class="bi bi-star-fill"></i><span>0</span></div>
       </header>
-      <p class="mode-desc">Every ball looks and sounds different. Earn stars to unlock more, and tap <i class="bi bi-play-fill"></i> to hear one.</p>
+      <div class="shop-bar">
+        <div class="coin-count" id="balls-coins" aria-label="Coins"><img src="assets/rewards/coins.svg" alt=""><span>0</span></div>
+        <button class="btn btn-primary ad-coins-btn" data-action="ad-coins" id="btn-ad-coins"><i class="bi bi-play-btn-fill"></i><span>Watch ad +25</span><img src="assets/rewards/coins.svg" alt=""></button>
+      </div>
+      <p class="mode-desc">Every ball looks and sounds different. Earn stars or buy with coins to unlock more, and tap <i class="bi bi-play-fill"></i> to hear one.</p>
       <div class="level-scroll"><div id="ball-grid"></div></div>
     </section>
 

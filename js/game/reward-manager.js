@@ -81,6 +81,34 @@
       } finally { busy = false; }
     },
 
+    // ---- ball shop & coin ads -------------------------------------------------------
+    ballPrice(skin) { return Rewards.ballPrice(cfg, skin); },
+    adCoins() { return Rewards.adCoinsStatus(RewardManager.state, cfg, LevelManager.dailyKey()); },
+
+    buyBall(id, expectedPrice) {
+      if (busy) return { ok: false, reason: 'busy' };
+      busy = true;
+      try {
+        const res = Rewards.buyBall(RewardManager.state, RewardManager.env(), id, expectedPrice);
+        if (res.ok) SaveManager.persist();
+        return res;
+      } finally { busy = false; }
+    },
+
+    /** Rewarded ad for coins; `showAd` resolves true only when the ad was watched to the end. */
+    async watchAdForCoins(showAd) {
+      if (busy) return { ok: false, reason: 'busy' };
+      if (!RewardManager.adCoins().left) return { ok: false, reason: 'limit' };
+      busy = true;
+      try {
+        if (!(await showAd())) return { ok: false, reason: 'ad' };
+        const entry = Rewards.grantAdCoins(RewardManager.state, cfg, LevelManager.dailyKey());
+        if (!entry) return { ok: false, reason: 'limit' };
+        SaveManager.persist();
+        return { ok: true, entry };
+      } finally { busy = false; }
+    },
+
     // ---- earning / spending ---------------------------------------------------------
     addCoins(n) {
       if (!(n > 0)) return 0;
@@ -138,6 +166,14 @@
       else if (entry.type === 'coins') name = entry.amount + ' Coins';
       else if (entry.type === 'moves') name = '+' + entry.amount + ' Extra Moves';
       return { label: type.label, name, art: type.art };
+    },
+
+    /** Where a history entry came from. */
+    sourceLabel(entry) {
+      if (entry.source === 'milestone') return 'Milestone gift';
+      if (entry.source === 'shop') return 'Bought for ' + entry.price + ' coins';
+      if (entry.source === 'ad') return 'Watched an ad';
+      return 'Daily gift';
     },
   };
 
