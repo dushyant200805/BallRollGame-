@@ -79,6 +79,15 @@ namespace BallRoll
             i.roll.pitch = 0.85f + 0.3f * Mathf.Clamp01(k);
         }
 
+        /// <summary>Apply volume / on-off changes to the music that is already playing.</summary>
+        public static void ApplyVolumes()
+        {
+            var i = I;
+            i.music.volume = MusicVol * Master * 0.5f;
+            if (!MusicOn && i.music.isPlaying) i.music.Stop();
+            if (!SoundOn) i.rollTarget = 0;
+        }
+
         public static void StopRoll() { if (inst != null) inst.rollTarget = 0; }
 
         void Update()

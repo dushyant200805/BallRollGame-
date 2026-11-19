@@ -11,7 +11,7 @@ namespace BallRoll
             Application.targetFrameRate = 60;
             var cam = Camera.main;
             if (cam != null) { cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = UI.Palette.Bg2; }
-            gameObject.AddComponent<GameScreen>();
+            gameObject.AddComponent<App>();
             Destroy(this);
         }
     }

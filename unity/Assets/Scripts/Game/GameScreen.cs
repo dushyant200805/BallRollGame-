@@ -12,11 +12,11 @@ namespace BallRoll
 {
     public sealed class GameScreen : MonoBehaviour
     {
-        static readonly string[] Modes = { "classic", "challenge", "timetrial" };
+
 
         RectTransform root, boardArea, overlay;
         BoardView board;
-        Text title, chip, movesTxt, targetLbl, targetTxt, timeLbl, timeTxt, status, toast;
+        Text title, chip, movesTxt, targetLbl, targetTxt, timeLbl, timeTxt, status;
         Image chipBg, targetBox, timeBox;
         GameButton undoBtn, restartBtn, hintBtn, playBtn;
 
@@ -25,42 +25,75 @@ namespace BallRoll
         LevelDef level;
         GameSession session;
         bool lastConnected;
-        float hudTimer, toastTimer;
+        float hudTimer;
         bool reduced;
+        string dailyKey; // set while playing the Daily puzzle
+        bool visible;
 
         // ---------- lifecycle ----------
-        void Start()
+        /// <summary>Builds the HUD into the App's game screen rect.</summary>
+        public void Build(RectTransform parent)
         {
-            Application.targetFrameRate = 60;
-            Input.multiTouchEnabled = false;
-            root = UIKit.CreateRoot("Game");
+            root = parent;
             BuildHud();
-            mode = PlayerPrefs.GetString("bp.mode", "classic");
-            number = Mathf.Clamp(PlayerPrefs.GetInt("bp.level", 1), 1, GameData.Count(mode));
-            Sfx.StartMusic();
-            StartCoroutine(StartNextFrame());
         }
 
-        IEnumerator StartNextFrame()
+        public void SetVisible(bool v)
+        {
+            if (!v && visible) SaveCurrent();
+            visible = v;
+            gameObject.SetActive(v);
+        }
+
+        public void Play(string m, int n, bool resume) => StartCoroutine(PlayNextFrame(m, n, resume, null));
+
+        public void PlayDaily()
+        {
+            string key = LevelRules.DailyKey(System.DateTime.Now);
+            StartCoroutine(PlayNextFrame("daily", 0, true, key));
+        }
+
+        IEnumerator PlayNextFrame(string m, int n, bool resume, string daily)
         {
             yield return null; // let the canvas lay out so the board knows its size
-            StartLevel(mode, number);
+            if (daily != null) StartDaily(daily, resume); else StartLevel(m, n, resume);
+        }
+
+        /// <summary>Android back: close a dialog / pause. Returns false to leave the game screen.</summary>
+        public bool HandleBack()
+        {
+            if (overlay != null)
+            {
+                if (session != null && session.State == SessionState.Paused) { session.Resume(); CloseOverlay(); return true; }
+                if (session != null && session.State == SessionState.Playing) { CloseOverlay(); return true; }
+                return false;
+            }
+            if (session != null && session.State == SessionState.Playing && !board.Rolling) { Pause(); return true; }
+            return false;
+        }
+
+        void SaveCurrent()
+        {
+            if (session == null || (session.State != SessionState.Playing && session.State != SessionState.Paused)) return;
+            SaveSystem.SaveCurrent(new CurrentGame { mode = mode, number = number, dailyKey = dailyKey, levelId = level.Id, snapshot = session.Snapshot() });
         }
 
         void Update()
         {
+            if (!visible) return;
             if (session != null && overlay == null && !board.Rolling)
             {
                 if (session.Tick(Time.deltaTime)) Lose("time");
                 hudTimer += Time.deltaTime;
                 if (hudTimer > 0.2f) { hudTimer = 0; UpdateTime(); }
             }
-            if (toastTimer > 0 && (toastTimer -= Time.deltaTime) <= 0) toast.transform.parent.gameObject.SetActive(false);
         }
 
         void OnApplicationPause(bool paused)
         {
-            if (paused && session != null && session.State == SessionState.Playing && overlay == null) Pause();
+            if (!paused || !visible) return;
+            if (session != null && session.State == SessionState.Playing && overlay == null) Pause();
+            SaveCurrent();
         }
 
         // ---------- HUD ----------
@@ -80,10 +113,13 @@ namespace BallRoll
             UIKit.Stretch(chip.rectTransform);
             var snd = UIKit.Button(top, "Sound", new Color(1, 1, 1, 0.12f), new Color(0, 0, 0, 0.25f), Palette.Ink, null, 30);
             UIKit.Place((RectTransform)snd.transform, new Vector2(1, 0.5f), new Vector2(150, 130), new Vector2(-75, 0));
+            snd.Text.text = SaveSystem.Settings.sound ? "Sound" : "Muted";
             snd.Init(snd.transform.Find("Face").GetComponent<Image>(), snd.Text, () =>
             {
-                Sfx.SoundOn = !Sfx.SoundOn;
-                snd.Text.text = Sfx.SoundOn ? "Sound" : "Muted";
+                SaveSystem.Settings.sound = !SaveSystem.Settings.sound;
+                SaveSystem.Save();
+                App.I.ApplySettings();
+                snd.Text.text = SaveSystem.Settings.sound ? "Sound" : "Muted";
                 if (!Sfx.SoundOn) Sfx.StopRoll();
             });
 
@@ -122,14 +158,6 @@ namespace BallRoll
             hintBtn = Ctrl(ctrls, 2, "Hint", dim, new Color(0, 0, 0, 0.3f), Palette.Ink, Hint);
             playBtn = Ctrl(ctrls, 3, "Play", Painter.Hex("#4cc38a"), Painter.Hex("#1d8150"), Color.white, Roll);
 
-            // toast
-            var tb = UIKit.Box(root, new Color(0.04f, 0.08f, 0.13f, 0.92f), 30, "Toast");
-            tb.rectTransform.anchorMin = tb.rectTransform.anchorMax = new Vector2(0.5f, 0);
-            tb.rectTransform.sizeDelta = new Vector2(900, 120); tb.rectTransform.anchoredPosition = new Vector2(0, 420);
-            toast = UIKit.Label(tb.rectTransform, "", 38, Palette.Ink, TextAnchor.MiddleCenter, false);
-            UIKit.Stretch(toast.rectTransform, 24, 8, 24, 8);
-            tb.raycastTarget = false;
-            tb.gameObject.SetActive(false);
         }
 
         Text Stat(RectTransform parent, int i, string label, out Text lbl, out Image box)
@@ -155,12 +183,7 @@ namespace BallRoll
             return btn;
         }
 
-        void Toast(string msg)
-        {
-            toast.text = msg;
-            toast.transform.parent.gameObject.SetActive(true);
-            toastTimer = 2.4f;
-        }
+        void Toast(string msg) => App.I.Toast(msg);
 
         static string Fmt(float sec)
         {
@@ -209,35 +232,58 @@ namespace BallRoll
         void Status(string text, Color? c = null) { status.text = text; status.color = c ?? Palette.InkDim; }
 
         // ---------- level flow ----------
-        void StartLevel(string m, int n)
+        void StartLevel(string m, int n, bool resume = false)
         {
             CloseOverlay();
             mode = m;
             number = n;
-            PlayerPrefs.SetString("bp.mode", mode);
-            PlayerPrefs.SetInt("bp.level", number);
+            dailyKey = null;
+            SaveSystem.Data.lastMode = mode;
             level = GameData.Level(mode, number);
             LevelRules.LimitsFor(mode, level, GameData.Count(mode), out int ml, out float tl);
-            session = new GameSession(level, mode, ml, tl);
             var tier = GameData.TierOf(mode, number);
-            title.text = "Level " + number;
-            chip.text = (mode == "classic" ? "" : (mode == "challenge" ? "Challenge · " : "Time Trial · ")) + tier.name;
-            chipBg.color = Painter.Hex(tier.color);
+            Begin(new GameSession(level, mode, ml, tl), "Level " + number,
+                (mode == "classic" ? "" : (mode == "challenge" ? "Challenge · " : "Time Trial · ")) + tier.name, tier.color, resume);
+        }
+
+        void StartDaily(string key, bool resume)
+        {
+            CloseOverlay();
+            level = LevelRules.Daily(key);
+            if (level == null) { Toast("Couldn't build today's puzzle. Please try again."); App.I.Show("home"); return; }
+            mode = "daily";
+            number = 0;
+            dailyKey = key;
+            var d = System.DateTime.ParseExact(key, "yyyy-MM-dd", null);
+            Begin(new GameSession(level, "daily"), "Daily · " + d.ToString("MMM d"), "Daily", "#f06aa8", resume);
+        }
+
+        void Begin(GameSession s, string heading, string chipText, string chipColor, bool resume)
+        {
+            session = s;
+            var cur = SaveSystem.Current;
+            if (resume && cur != null && cur.mode == mode && cur.number == number && cur.levelId == level.Id && cur.dailyKey == dailyKey)
+                session.Restore(cur.snapshot);
+            reduced = SaveSystem.Settings.animations == "reduced";
+            title.text = heading;
+            chip.text = chipText;
+            chipBg.color = Painter.Hex(chipColor);
 
             // largest centred square that fits the board area
             var area = boardArea.rect;
             float side = Mathf.Min(area.width, area.height, 1040);
             ((RectTransform)board.transform).sizeDelta = new Vector2(side, side);
-            var skins = GameData.Skins;
-            board.Skin = skins.skins.Find(s => s.id == PlayerPrefs.GetString("bp.ball", skins.defaultBall)) ?? skins.skins[0];
-            board.Build(session, null);
+            board.Skin = SaveSystem.SelectedBall();
+            board.Build(session, SaveSystem.Theme().tray);
             lastConnected = session.Connection.Ok;
             Status("Slide tiles to connect the pipe from start to goal.");
             UpdateHud();
+            SaveCurrent();
         }
 
         void OnMoved(Move m)
         {
+            Haptics.Buzz();
             Sfx.Play("slide");
             bool ok = session.Connection.Ok;
             if (ok && !lastConnected) Sfx.Play("connect");
@@ -245,6 +291,7 @@ namespace BallRoll
             if (ok) Status("Path complete! Press Play to roll the ball.", Painter.Hex("#7ff0c8"));
             else Status(session.MoveLimit > 0 && session.MovesLeft == 0 ? "No moves left. Press Play!" : "Keep sliding to connect the pipe.");
             UpdateHud();
+            SaveCurrent();
         }
 
         void OnInvalid(int x, int y)
@@ -263,7 +310,7 @@ namespace BallRoll
         void Undo()
         {
             if (!Interactive) return;
-            if (session.Undo(out var back)) { board.ShowMove(back); Sfx.Play("slide"); lastConnected = session.Connection.Ok; UpdateHud(); }
+            if (session.Undo(out var back)) { board.ShowMove(back); Sfx.Play("slide"); lastConnected = session.Connection.Ok; UpdateHud(); SaveCurrent(); }
             else Toast("Nothing to undo");
         }
 
@@ -298,7 +345,8 @@ namespace BallRoll
             var trace = session.StartRoll();
             if (trace == null) return;
             UpdateHud();
-            Sfx.StartRoll(board.Skin != null ? board.Skin.id : "ruby");
+            var rs = SaveSystem.Data.rewards.rollSound;
+            Sfx.StartRoll(!string.IsNullOrEmpty(rs) && Rewards.SoundOwned(SaveSystem.Data.rewards, rs, new RewardEnv { Cfg = GameData.Rewards, Skins = GameData.SkinCosts(), Stars = SaveSystem.AllStars() }) ? rs : board.Skin.id);
             board.Roll(trace, reduced,
                 Sfx.RollIntensity,
                 () => { Sfx.StopRoll(); Sfx.Play("win"); },
@@ -331,49 +379,77 @@ namespace BallRoll
         void Win()
         {
             int stars = session.Stars();
-            string key = $"bp.stars.{mode}.{number}";
-            PlayerPrefs.SetInt(key, Mathf.Max(stars, PlayerPrefs.GetInt(key, 0)));
-            PlayerPrefs.Save();
-            bool last = number >= GameData.Count(mode);
-            string note = session.Moves <= level.Par ? "Perfect! You matched par." : stars < 3 ? (mode == "timetrial" ? "Finish faster for more stars." : $"Solve it in {level.Par} moves for 3 stars.") : "";
+            int time = Mathf.RoundToInt(session.Elapsed);
+            bool firstClear, isBest;
+            int best;
+            if (mode == "daily")
+            {
+                var prev = SaveSystem.RecordDaily(dailyKey, stars, session.Moves, time);
+                firstClear = prev == null;
+                isBest = prev != null && session.Moves < prev.bestMoves;
+                best = SaveSystem.DailyResultFor(dailyKey).bestMoves;
+            }
+            else
+            {
+                var prev = SaveSystem.RecordWin(mode, number, stars, session.Moves, time);
+                firstClear = prev == null;
+                isBest = prev != null && (session.Moves < prev.bestMoves || stars > prev.stars);
+                best = SaveSystem.Result(mode, number).bestMoves;
+            }
+            int coins = 0;
+            if (firstClear && GameData.Rewards.firstClearCoins > 0)
+            {
+                coins = GameData.Rewards.firstClearCoins;
+                SaveSystem.Data.rewards.coins += coins;
+                SaveSystem.Save();
+            }
+            bool last = mode != "daily" && number >= GameData.Count(mode);
+            string note = isBest ? "New best score!" : session.Moves <= level.Par ? "Perfect! You matched par." : stars < 3 ? (mode == "timetrial" ? "Finish faster for more stars." : $"Solve it in {level.Par} moves for 3 stars.") : "";
+            if (session.HintsUsed > 0 && note == "") note = $"Solved with {session.HintsUsed} hint{(session.HintsUsed > 1 ? "s" : "")}.";
             string movesText = mode == "timetrial" ? session.Moves.ToString() : $"{session.Moves} / {level.Par}";
-            var info = $"{note}\n\nMoves {movesText}    Time {Fmt(session.Elapsed)}";
-            StartCoroutine(ShowWinLater(stars, last ? "Final Level Cleared!" : "Level Complete!", info, last));
+            var info = $"{note}{(coins > 0 ? $"\n+{coins} coins for your first clear" : "")}\n\nMoves {movesText}    Time {Fmt(time)}    Best {best}";
+            StartCoroutine(ShowWinLater(stars, mode == "daily" ? "Daily Solved!" : last ? "Final Level Cleared!" : "Level Complete!", info, last));
             UpdateHud();
         }
 
         IEnumerator ShowWinLater(int stars, string heading, string info, bool last)
         {
             yield return new WaitForSeconds(reduced ? 0.15f : 0.6f);
-            ShowDialog(heading, info, stars, ("Next", true, Next), ("Replay", false, () => StartLevel(mode, number)));
+            if (mode == "daily") ShowDialog(heading, info, stars, ("Home", true, () => App.I.Show("home")), ("Replay", false, Replay));
+            else if (last) ShowDialog(heading, info, stars, ("Level select", true, () => App.I.ShowLevels(mode)), ("Replay", false, Replay));
+            else ShowDialog(heading, info, stars, ("Next", true, Next), ("Replay", false, Replay), ("Level select", false, () => App.I.ShowLevels(mode)));
         }
 
         void Next()
         {
             if (number < GameData.Count(mode)) StartLevel(mode, number + 1);
-            else
-            {
-                int mi = System.Array.IndexOf(Modes, mode);
-                StartLevel(Modes[(mi + 1) % Modes.Length], 1); // menus arrive in phase 4: go on to the next mode
-            }
+            else App.I.ShowLevels(mode);
+        }
+
+        void Replay()
+        {
+            if (mode == "daily") StartDaily(dailyKey, false); else StartLevel(mode, number);
         }
 
         void Lose(string reason)
         {
             Sfx.StopRoll();
             Sfx.Play("fail");
+            SaveSystem.SaveCurrent(null);
             UpdateHud();
             ShowDialog(reason == "time" ? "Time's up!" : "Out of moves",
                 reason == "time" ? "The clock ran out before the ball reached the goal. Give it another go!"
                                  : "You used every move without completing the path. Try a different route!",
-                null, ("Restart level", true, Restart));
+                null, ("Restart level", true, Restart), ("Levels", false, () => App.I.ShowLevels(mode)));
         }
 
         void Pause()
         {
             if (session == null || session.State != SessionState.Playing || overlay != null) return;
             session.Pause();
-            ShowDialog("Paused", "", null, ("Resume", true, () => { session.Resume(); CloseOverlay(); }), ("Restart", false, Restart));
+            SaveCurrent();
+            ShowDialog("Paused", "", null, ("Resume", true, () => { session.Resume(); CloseOverlay(); }), ("Restart", false, Restart),
+                ("Settings", false, () => App.I.OpenSettings()), ("Levels", false, () => App.I.ShowLevels(mode)), ("Home", false, () => App.I.Show("home")));
         }
 
         // ---------- dialogs ----------
