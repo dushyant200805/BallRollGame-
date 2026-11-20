@@ -433,11 +433,13 @@ namespace BallRoll
         IEnumerator ShowWinLater(int stars, string heading, string info, bool last)
         {
             yield return new WaitForSeconds(reduced ? 0.15f : 0.6f);
-            if (mode == "daily") ShowDialog(heading, info, stars, ("Home", true, () => App.I.Show("home")), ("Replay", false, Replay));
+            // leaving the win dialog is a natural break: an interstitial may show first (frequency-capped)
+            System.Action Brk(System.Action a) => () => AdsManager.LevelBreak(a);
+            if (mode == "daily") ShowDialog(heading, info, stars, ("Home", true, Brk(() => App.I.Show("home"))), ("Replay", false, Brk(Replay)));
             else if (giftReady) ShowDialog(heading, info, stars, ("Open milestone gift!", true, () => { giftReady = false; App.I.OpenMilestone(); }),
-                (last ? "Level select" : "Next", false, last ? (System.Action)(() => App.I.ShowLevels(mode)) : Next), ("Replay", false, Replay));
-            else if (last) ShowDialog(heading, info, stars, ("Level select", true, () => App.I.ShowLevels(mode)), ("Replay", false, Replay));
-            else ShowDialog(heading, info, stars, ("Next", true, Next), ("Replay", false, Replay), ("Level select", false, () => App.I.ShowLevels(mode)));
+                (last ? "Level select" : "Next", false, Brk(last ? (System.Action)(() => App.I.ShowLevels(mode)) : Next)), ("Replay", false, Brk(Replay)));
+            else if (last) ShowDialog(heading, info, stars, ("Level select", true, Brk(() => App.I.ShowLevels(mode))), ("Replay", false, Brk(Replay)));
+            else ShowDialog(heading, info, stars, ("Next", true, Brk(Next)), ("Replay", false, Brk(Replay)), ("Level select", false, Brk(() => App.I.ShowLevels(mode))));
         }
 
         void Next()

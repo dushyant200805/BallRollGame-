@@ -164,8 +164,10 @@ namespace BallRoll
         };
     }
 
-    /// <summary>Simulated rewarded ad (clearly labelled as a test ad). Replace with the Google Mobile
-    /// Ads SDK later: callers only need done(watchedToTheEnd, failedToLoad).</summary>
+    /// <summary>Rewarded ads for the game. On a device it plays a real Google Mobile Ads rewarded ad
+    /// (Google TEST units until AdMob is set up, see AdsManager); while the ad loads, or if it can't
+    /// load, this screen shows "Loading ad…" / an error with Try again. In the Unity Editor it falls
+    /// back to a simulated ad. Callers get done(watchedToTheEnd, failedToLoad).</summary>
     public sealed class AdService : MonoBehaviour
     {
         static AdService active;
@@ -174,16 +176,24 @@ namespace BallRoll
         GameButton claim, retry;
         int left;
         bool failed;
+        bool real; // real Google ad (device) vs simulated (editor)
+        static bool UseRealAds => !Application.isEditor;
 
         public static void ShowRewarded(Action<bool, bool> done)
         {
             if (active != null) { done(false, false); return; } // one ad at a time
+            if (UseRealAds && AdsManager.RewardedReady)
+            {
+                AdsManager.ShowRewarded(earned => done(earned, false));
+                return;
+            }
             var root = UIKit.Rect("Ad", App.I.Root);
             UIKit.Stretch(root, -200, -200, -200, -200);
             root.SetAsLastSibling();
             root.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, 0.94f);
             active = root.gameObject.AddComponent<AdService>();
             active.done = done;
+            active.real = UseRealAds;
             active.Build(root);
         }
 
@@ -208,13 +218,14 @@ namespace BallRoll
             claim = UIKit.Primary(root, "Claim reward", () => Finish(true));
             UIKit.Place((RectTransform)claim.transform, new Vector2(0.5f, 0.5f), new Vector2(820, 140), new Vector2(0, -600));
             claim.Interactable = false;
-            var note = UIKit.Label(root, "Test ad (simulated). No real advertising is shown.", 30, Palette.InkDim, TextAnchor.MiddleCenter, false);
+            var note = UIKit.Label(root, real ? "Ads by Google (test ads during development)." : "Test ad (simulated). No real advertising is shown.", 30, Palette.InkDim, TextAnchor.MiddleCenter, false);
             UIKit.Place(note.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900, 60), new Vector2(0, -710));
             StartCoroutine(Load());
         }
 
         IEnumerator Load()
         {
+            if (real) { yield return LoadReal(); yield break; }
             var cfg = RewardService.Cfg.ad;
             failed = false;
             retry.gameObject.SetActive(false);
@@ -240,6 +251,36 @@ namespace BallRoll
             }
             timer.text = "Reward unlocked";
             claim.Interactable = true;
+        }
+
+        /// <summary>Wait (up to 10 s) for the Google rewarded ad, then hand over to it.</summary>
+        IEnumerator LoadReal()
+        {
+            failed = false;
+            retry.gameObject.SetActive(false);
+            claim.gameObject.SetActive(false);
+            info.text = "Loading ad…";
+            timer.text = "Loading…";
+            bool? result = null;
+            if (!AdsManager.Initialized) AdsManager.Start();
+            float t = 0;
+            while (!AdsManager.Initialized && t < 6f) { t += Time.unscaledDeltaTime; yield return null; }
+            AdsManager.LoadRewarded(ok => result = ok);
+            while (result == null && !AdsManager.RewardedReady && t < 10f) { t += Time.unscaledDeltaTime; yield return null; }
+            if (AdsManager.RewardedReady)
+            {
+                var cb = done;
+                done = null;
+                active = null;
+                Destroy(gameObject);
+                AdsManager.ShowRewarded(earned => cb?.Invoke(earned, false));
+                yield break;
+            }
+            failed = true;
+            info.text = Application.internetReachability == NetworkReachability.NotReachable
+                ? "No internet connection.\nConnect and try again." : "Ad not available right now.\nPlease try again.";
+            timer.text = "Ad failed to load";
+            retry.gameObject.SetActive(true);
         }
 
         void Finish(bool claimed)

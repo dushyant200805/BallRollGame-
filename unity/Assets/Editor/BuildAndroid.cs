@@ -32,6 +32,7 @@ namespace BallRoll.Editor
 
             EnsureScene();
             AudioImport.ReimportAll();
+            AdsSetup.Configure();
             ConfigureExternalTools();
             ConfigurePlayer(emulator);
             ConfigureSigning();

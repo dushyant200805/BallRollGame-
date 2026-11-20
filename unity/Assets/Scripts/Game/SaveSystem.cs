@@ -49,6 +49,7 @@ namespace BallRoll
         public bool hasCurrent;
         public string lastMode = "classic";
         public RewardState rewards;
+        public bool noAds; // Remove Ads purchased: no banner / interstitials
     }
 
     public static class SaveSystem

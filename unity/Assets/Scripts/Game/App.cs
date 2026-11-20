@@ -46,6 +46,16 @@ namespace BallRoll
             BuildToast();
             Show("home");
             Sfx.StartMusic();
+            AdsManager.BannerChanged += FitAboveBanner;
+            AdsManager.Start(); // consent, then SDK init and ad preloading
+        }
+
+        /// <summary>Keep the UI above the banner (menus only; gameplay has no banner).</summary>
+        void FitAboveBanner()
+        {
+            var canvas = root.GetComponentInParent<Canvas>();
+            float units = AdsManager.BannerHeightPx / Mathf.Max(0.01f, canvas.scaleFactor);
+            root.offsetMin = new Vector2(root.offsetMin.x, units);
         }
 
         void Update()
@@ -67,6 +77,7 @@ namespace BallRoll
             giftsRt.gameObject.SetActive(name == "gifts");
             if (name != "balls" && name != "gifts") Sfx.StopPreview();
             game.SetVisible(name == "game");
+            AdsManager.ShowBanner(name != "game"); // banners on menu screens only, never during play
             if (name == "home") BuildHome();
             if (name == "levels") BuildLevels(levelsMode);
             if (name == "balls") BuildBalls();
@@ -322,6 +333,11 @@ namespace BallRoll
             SliderRow(pr, "Sound effects", s.volumes.sfx, v => { s.volumes.sfx = v; Changed(); }, ref y);
             SliderRow(pr, "Music", s.volumes.music, v => { s.volumes.music = v; Changed(); }, ref y);
             Toggle(pr, "Reduced animations", s.animations == "reduced", v => { s.animations = v ? "reduced" : "full"; Changed(); }, ref y);
+            if (AdsManager.PrivacyOptionsRequired)
+            {
+                var priv = UIKit.Plain(pr, "Privacy options", () => AdsManager.ShowPrivacyOptions(null));
+                UIKit.Place((RectTransform)priv.transform, new Vector2(0.5f, 0), new Vector2(760, 110), new Vector2(0, 400));
+            }
             var done = UIKit.Primary(pr, "Done", CloseOverlay);
             UIKit.Place((RectTransform)done.transform, new Vector2(0.5f, 0), new Vector2(760, 130), new Vector2(0, 250));
             var reset = UIKit.Button(pr, "Reset progress", Palette.Danger, Painter.Hex("#a82638"), Color.white, ConfirmReset, 44);
