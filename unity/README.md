@@ -2,13 +2,30 @@
 
 This is the native Unity rebuild of Ball Roll. The plan is in `../FEASIBILITY-UNITY.md`.
 
-**Status:**
-- Phase 1 is done:
-  - Project set up, Android settings and the signed build pipeline.
-  - A boot screen that runs the migrated C# core on the device.
-- Phase 2 is done:
-  - The game rules, levels, Daily puzzle and reward rules are ported to C#.
-  - 15 EditMode tests cover them.
+**Status:** the migration is complete except for Play Billing, which is intentionally skipped.
+
+| Phase | What | State |
+|---|---|---|
+| 1 | Project, Android settings, signed APK/AAB build pipeline | Done |
+| 2 | Rules, 60 levels, Daily puzzle, reward rules in C# (15 EditMode tests) | Done |
+| 3 | Gameplay: board drawn in code, touch drag, ball roll, HUD, dialogs | Done |
+| 4 | Home / Level select / Settings menus, JSON save, pause, back button | Done |
+| 5 | Coins, extra moves, milestone + daily gifts, ball shop, themes, sounds | Done |
+| 6 | Google Mobile Ads (AdMob): consent, rewarded, interstitial, banner | Done — Google TEST ad IDs |
+| 8 | Analytics event layer (debug provider; Firebase/Unity seam) | Done |
+| 7 | Play Billing "Remove Ads" + restore | **Skipped** |
+
+Notes on what a store release still needs (none of these are code gaps):
+- **Phase 7 skipped:** there is a `noAds` save flag and `AdsManager.DisableAds()` already, so a Play
+  Billing purchase can be wired to it later without reworking the ad code.
+- **Real ads:** AdMob uses Google's TEST ad unit IDs. Set `BALLROLL_ADMOB_APP_ID` and replace the
+  unit IDs in `AdsManager.cs` with your own once your AdMob account is ready. Real ads need a
+  physical device to verify (the x86_64 emulator can't serve them).
+- **Analytics backend:** the debug provider logs to logcat + a local file. Implement
+  `IAnalyticsProvider` with Firebase or Unity Analytics and register it in `Analytics.Init` when you
+  have the credentials; the event names stay the same.
+- **Signing:** builds use the same upload key as the React Native app (`../mobile/keystore.properties`),
+  package id `com.ballroll.game`, version 2.0.0 (versionCode 2).
 
 **Unity version:** **6000.0.85f2 LTS**, with the Android Build Support module. It is installed at `D:\Unity\6000.0.85f2`.
 - Unity 6.5+ removed x86_64 Android builds, so the PC emulator can't run builds from newer versions.
