@@ -11,16 +11,17 @@ This is the native Unity rebuild of Ball Roll. The plan is in `../FEASIBILITY-UN
 | 3 | Gameplay: board drawn in code, touch drag, ball roll, HUD, dialogs | Done |
 | 4 | Home / Level select / Settings menus, JSON save, pause, back button | Done |
 | 5 | Coins, extra moves, milestone + daily gifts, ball shop, themes, sounds | Done |
-| 6 | Google Mobile Ads (AdMob): consent, rewarded, interstitial, banner | Done — Google TEST ad IDs |
+| 6 | Google Mobile Ads (AdMob): consent, rewarded, interstitial, banner | Done — real Ball Roll ad IDs |
 | 8 | Analytics event layer (debug provider; Firebase/Unity seam) | Done |
 | 7 | Play Billing "Remove Ads" + restore | **Skipped** |
 
 Notes on what a store release still needs (none of these are code gaps):
 - **Phase 7 skipped:** there is a `noAds` save flag and `AdsManager.DisableAds()` already, so a Play
   Billing purchase can be wired to it later without reworking the ad code.
-- **Real ads:** AdMob uses Google's TEST ad unit IDs. Set `BALLROLL_ADMOB_APP_ID` and replace the
-  unit IDs in `AdsManager.cs` with your own once your AdMob account is ready. Real ads need a
-  physical device to verify (the x86_64 emulator can't serve them).
+- **Real ads:** AdMob uses the real Ball Roll ad units (app id in `AdsSetup.cs`, unit IDs in
+  `AdsManager.cs`; publisher `ca-app-pub-4476680385862307`). A freshly created ad unit can take up to
+  ~1 hour before it serves live ads; real ads need a physical device to verify (the x86_64 emulator
+  can't serve them). `BALLROLL_ADMOB_APP_ID` still overrides the app id if needed.
 - **Analytics backend:** the debug provider logs to logcat + a local file. Implement
   `IAnalyticsProvider` with Firebase or Unity Analytics and register it in `Analytics.Init` when you
   have the credentials; the event names stay the same.

@@ -1,9 +1,9 @@
 // Ball Roll — Google Mobile Ads (AdMob) integration: consent (UMP), rewarded ads, interstitials at
 // natural breaks with a frequency cap, and an adaptive banner on menu screens only.
 //
-// The unit IDs below are Google's official TEST units: they always serve test ads, are safe to tap,
-// and never earn money. Replace them with your own AdMob units (and set BALLROLL_ADMOB_APP_ID for
-// the build) once your AdMob account and app are set up.
+// The unit IDs below are the real Ball Roll AdMob ad units (publisher ca-app-pub-4476680385862307).
+// A freshly created ad unit can take up to ~1 hour before it serves live ads; until then AdMob may
+// return "no fill" (the integration is still correct). The Android app id is set in AdsSetup.cs.
 using System;
 using GoogleMobileAds.Api;
 using GoogleMobileAds.Ump.Api;
@@ -13,9 +13,9 @@ namespace BallRoll
 {
     public static class AdsConfig
     {
-        public const string Rewarded = "ca-app-pub-3940256099942544/5224354917";      // test rewarded
-        public const string Interstitial = "ca-app-pub-3940256099942544/1033173712";  // test interstitial
-        public const string Banner = "ca-app-pub-3940256099942544/9214589741";        // test adaptive banner
+        public const string Rewarded = "ca-app-pub-4476680385862307/4446620158";      // Ball Roll real rewarded
+        public const string Interstitial = "ca-app-pub-4476680385862307/9116940012";  // Ball Roll real interstitial
+        public const string Banner = "ca-app-pub-4476680385862307/1761194173";        // Ball Roll real adaptive banner
         public const int InterstitialEveryLevels = 3;   // at most one interstitial per 3 finished levels
         public const float InterstitialCooldown = 90f;  // seconds since the last full-screen ad
     }
