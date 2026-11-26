@@ -83,7 +83,7 @@ namespace BallRoll
             RewardedAd.Load(AdsConfig.Rewarded, new AdRequest(), (ad, error) =>
             {
                 rewardedLoading = false;
-                if (error != null || ad == null) { Log("rewarded load failed: " + error?.GetMessage()); loaded?.Invoke(false); return; }
+                if (error != null || ad == null) { Log("rewarded load failed: " + error?.GetMessage()); Analytics.AdFailed("rewarded", "load"); loaded?.Invoke(false); return; }
                 rewarded = ad;
                 Log("rewarded loaded");
                 loaded?.Invoke(true);
@@ -110,7 +110,8 @@ namespace BallRoll
             ad.OnAdFullScreenContentClosed += Finish;
             ad.OnAdFullScreenContentFailed += e => { Log("rewarded show failed: " + e.GetMessage()); Finish(); };
             Log("rewarded show");
-            ad.Show(reward => { earned = true; Log($"reward earned: {reward.Amount} {reward.Type}"); });
+            Analytics.AdShown("rewarded", "rewarded");
+            ad.Show(reward => { earned = true; Analytics.AdReward("rewarded"); Log($"reward earned: {reward.Amount} {reward.Type}"); });
         }
 
         // ---------- interstitial ----------
@@ -153,6 +154,7 @@ namespace BallRoll
             ad.OnAdFullScreenContentClosed += Finish;
             ad.OnAdFullScreenContentFailed += e => { Log("interstitial show failed: " + e.GetMessage()); Finish(); };
             Log("interstitial show");
+            Analytics.AdShown("level_break", "interstitial");
             ad.Show();
         }
 

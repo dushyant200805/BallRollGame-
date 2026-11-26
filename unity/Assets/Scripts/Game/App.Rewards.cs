@@ -154,6 +154,7 @@ namespace BallRoll
             if (!RewardService.IsBallOwned(s)) return;
             SaveSystem.Data.ball = s.id;
             SaveSystem.Save();
+            Analytics.BallSelected(s.id);
             Toast(s.name + " selected");
             BuildBallsKeepScroll();
         }
@@ -170,6 +171,9 @@ namespace BallRoll
                     Sfx.Play("win");
                     SaveSystem.Data.ball = s.id;
                     SaveSystem.Save();
+                    Analytics.CoinsSpent(price, "buy_ball", RewardService.State.coins);
+                    Analytics.BallUnlocked(s.id, "coins", price);
+                    Analytics.BallSelected(s.id);
                     Toast(s.name + " unlocked and selected!");
                 }
                 else Toast(why == "coins" ? "Not enough coins." : "Could not buy this ball. Please try again.");
@@ -181,7 +185,7 @@ namespace BallRoll
         {
             RewardService.WatchAdForCoins((e, why) =>
             {
-                if (e != null) { Sfx.Play("star2"); Toast($"+{e.amount} coins!"); }
+                if (e != null) { Sfx.Play("star2"); Analytics.AdReward("coins"); Analytics.CoinsEarned(e.amount, "coin_ad", RewardService.State.coins); Toast($"+{e.amount} coins!"); }
                 else if (why == "ad") Toast("Watch the whole ad to get the coins.");
                 else if (why == "failed") Toast("Ad not available right now. Please try again later.");
                 else if (why == "limit") Toast("No more coin ads today. Come back tomorrow!");
@@ -264,7 +268,7 @@ namespace BallRoll
                 var tid = t.id;
                 var b = UIKit.Button(r, cur ? "✓ In use" : owned ? "Use" : "Gift", cur ? Palette.Gold : owned ? Palette.Cream : new Color(0, 0, 0, 0.25f),
                     cur ? Palette.GoldDark : owned ? Palette.CreamEdge : new Color(0, 0, 0, 0), owned ? Palette.PanelInk : Palette.InkDim,
-                    () => { if (RewardService.SetTheme(tid)) { ApplyTheme(); Toast(t.name + " theme on"); BuildGifts(); } else Toast("Win this theme from a gift."); }, 28);
+                    () => { if (RewardService.SetTheme(tid)) { ApplyTheme(); Analytics.ThemeSelected(tid); Toast(t.name + " theme on"); BuildGifts(); } else Toast("Win this theme from a gift."); }, 28);
                 At(b, new Vector2(0.5f, 0), new Vector2(tw - 40, 64), new Vector2(0, 46));
             }
             y -= ((cfg.themes.Count + 2) / 3) * 320 + 10;
@@ -350,8 +354,9 @@ namespace BallRoll
                 if (st.coins < next.Cost) { Toast($"Not enough coins. This gift costs {next.Cost} coins."); return; }
                 Confirm("Open another gift?", $"This gift costs {next.Cost} coins. You have {st.coins} coins.", $"Spend {next.Cost}", () =>
                 {
+                    int before = RewardService.State.coins + next.Cost;
                     var e = RewardService.OpenDailyWithCoins(next.Cost, out var why);
-                    if (e != null) ShowReward(e); else Toast(why == "coins" ? "Not enough coins." : "The price changed. Please try again.");
+                    if (e != null) { Analytics.CoinsSpent(next.Cost, "daily_gift", RewardService.State.coins); ShowReward(e); } else Toast(why == "coins" ? "Not enough coins." : "The price changed. Please try again.");
                     if (screen == "gifts") BuildGiftsKeepScroll();
                 }, true);
             }
@@ -368,6 +373,8 @@ namespace BallRoll
         // ---------- gift reveal ----------
         public void ShowReward(HistoryEntry e)
         {
+            Analytics.GiftOpened(e.source, e.type, e.item, e.amount);
+            if (e.type == "coins") Analytics.CoinsEarned(e.amount, "gift_" + e.source, RewardService.State.coins);
             CloseOverlay();
             overlayRt = UIKit.Rect("Reward", root);
             UIKit.Stretch(overlayRt, -200, -200, -200, -200);

@@ -295,6 +295,7 @@ namespace BallRoll
             Status("Slide tiles to connect the pipe from start to goal.");
             UpdateHud();
             SaveCurrent();
+            Analytics.LevelStart(mode, number, session.Moves > 0 || session.Elapsed > 0);
         }
 
         void OnMoved(Move m)
@@ -345,6 +346,7 @@ namespace BallRoll
         {
             if (!Interactive) return;
             Sfx.Play("hint");
+            Analytics.HintUsed(mode, number);
             var h = session.Hint(out bool solved, out int remaining);
             if (solved) Toast("The path is complete. Press Play!");
             else if (h == null) Toast("This board has drifted far from a solution. Try Undo or Restart.");
@@ -422,6 +424,8 @@ namespace BallRoll
                 SaveSystem.Save();
             }
             bool last = mode != "daily" && number >= GameData.Count(mode);
+            Analytics.LevelComplete(mode, number, stars, session.Moves, level.Par, time, session.HintsUsed);
+            if (coins > 0) Analytics.CoinsEarned(coins, "first_clear", SaveSystem.Data.rewards.coins);
             string note = isBest ? "New best score!" : session.Moves <= level.Par ? "Perfect! You matched par." : stars < 3 ? (mode == "timetrial" ? "Finish faster for more stars." : $"Solve it in {level.Par} moves for 3 stars.") : "";
             if (session.HintsUsed > 0 && note == "") note = $"Solved with {session.HintsUsed} hint{(session.HintsUsed > 1 ? "s" : "")}.";
             string movesText = mode == "timetrial" ? session.Moves.ToString() : $"{session.Moves} / {level.Par}";
@@ -457,6 +461,7 @@ namespace BallRoll
         {
             Sfx.StopRoll();
             Sfx.Play("fail");
+            Analytics.LevelFail(mode, number, reason, session.Moves);
             SaveSystem.SaveCurrent(null);
             UpdateHud();
             if (reason == "time")

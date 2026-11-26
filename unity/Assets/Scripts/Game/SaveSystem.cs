@@ -15,7 +15,7 @@ namespace BallRoll
     [Serializable]
     public sealed class Settings
     {
-        public bool sound = true, music = true, vibration = true;
+        public bool sound = true, music = true, vibration = true, analytics = true;
         public string animations = "full"; // full | reduced
         public Volumes volumes = new Volumes();
     }

@@ -31,6 +31,8 @@ namespace BallRoll
             SaveSystem.Load();
             ApplySettings();
             Sfx.Init(SaveSystem.SelectedBall().id);
+            Analytics.SetEnabled(SaveSystem.Settings.analytics);
+            Analytics.Init();
             root = UIKit.CreateRoot("BallRoll");
             background = root.parent.Find("Background").GetComponent<RawImage>();
             ApplyTheme();
@@ -64,13 +66,15 @@ namespace BallRoll
             if (toastTimer > 0 && (toastTimer -= Time.deltaTime) <= 0) toast.transform.parent.gameObject.SetActive(false);
         }
 
-        void OnApplicationPause(bool p) { if (p) SaveSystem.Save(); }
+        void OnApplicationPause(bool p) { if (p) { SaveSystem.Save(); Analytics.SessionEnd(); } }
+        void OnApplicationQuit() { Analytics.SessionEnd(); }
 
         // ---------- navigation ----------
         public void Show(string name)
         {
             CloseOverlay();
             screen = name;
+            Analytics.ScreenView(name);
             homeRt.gameObject.SetActive(name == "home");
             levelsRt.gameObject.SetActive(name == "levels");
             ballsRt.gameObject.SetActive(name == "balls");
@@ -320,7 +324,7 @@ namespace BallRoll
             UIKit.Stretch(overlayRt, -200, -200, -200, -200);
             overlayRt.gameObject.AddComponent<Image>().color = Palette.Dim;
             var panel = UIKit.Box(overlayRt, Palette.Panel, 56, "Panel");
-            UIKit.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900, 1720));
+            UIKit.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900, 1850));
             var pr = panel.rectTransform;
             var h = UIKit.Label(pr, "Settings", 70, Palette.PanelInk);
             UIKit.Place(h.rectTransform, new Vector2(0.5f, 1), new Vector2(700, 100), new Vector2(0, -90));
@@ -333,6 +337,7 @@ namespace BallRoll
             SliderRow(pr, "Sound effects", s.volumes.sfx, v => { s.volumes.sfx = v; Changed(); }, ref y);
             SliderRow(pr, "Music", s.volumes.music, v => { s.volumes.music = v; Changed(); }, ref y);
             Toggle(pr, "Reduced animations", s.animations == "reduced", v => { s.animations = v ? "reduced" : "full"; Changed(); }, ref y);
+            Toggle(pr, "Analytics", s.analytics, v => { s.analytics = v; Changed(); Analytics.SetEnabled(v); }, ref y);
             if (AdsManager.PrivacyOptionsRequired)
             {
                 var priv = UIKit.Plain(pr, "Privacy options", () => AdsManager.ShowPrivacyOptions(null));
